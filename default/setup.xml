@@ -5,7 +5,7 @@
   </block>
 
   <block title="Set QuoLab add-on for Splunk"
-         endpoint="quolab_server/quolab_serverendpoint" entity="quolab">
+         endpoint="quolab_servers/quolab_serversendpoint" entity="quolab">
 
     <input field="url">
         <label>API URL (https://hostname.domain:port)</label>

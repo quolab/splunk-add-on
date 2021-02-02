@@ -1,5 +1,5 @@
 """
-This REST handler is a password fetching workaround for the /quolab_server endpoint.  This endpoint simply
+This REST handler is a password fetching workaround for the /quolab_servers endpoint.  This endpoint simply
 returns the token (password) for non-admin users.
 
 Starting in Splunk 6.5 reading from /storage/passsword requires the "list_storage_passwords"
@@ -15,7 +15,7 @@ This rest endpoint safely gets around the above limitations by:
        to specific roles, which are assigned to a limited number of users.
 
 
-XXX:  Ideally this endpoint should be written as a drop-in replacement for the EAI /quolab_server endpoint,
+XXX:  Ideally this endpoint should be written as a drop-in replacement for the EAI /quolab_servers endpoint,
       but hand-coding a EAI endpoint is unlikely to be worth the effort.  So for now, this code ONLY
       does one thing, and we have extra internal API calls for every invocation of quolabquery.
 
@@ -25,7 +25,7 @@ Docs:
 """
 
 APP_NAME = "TA-quolab"
-SECRET_KEY = ":quolab_server_token__{}:"
+SECRET_KEY = ":quolab_servers_token__{}:"
 
 import json
 
@@ -34,7 +34,7 @@ from splunk import AuthorizationFailed
 from splunk.persistconn.application import PersistentServerConnectionApplication
 
 
-class Quolab_serverSettingsHandler(PersistentServerConnectionApplication):
+class Quolab_serversSettingsHandler(PersistentServerConnectionApplication):
 
     def __init__(self, command_line, command_arg):
         del command_line, command_arg

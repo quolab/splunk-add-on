@@ -1,4 +1,4 @@
-""" Custom REST EAI handler for the new "/quolab_server" handler.  This is a very simple wrapper granting
+""" Custom REST EAI handler for the new "/quolab_servers" handler.  This is a very simple wrapper granting
 access to the custom "quolab_servers.conf" configuration file.
 
 Various ideas and code inspired and/or borrowed from:
@@ -20,15 +20,15 @@ lib_dir = os.path.join(os.path.dirname(__file__), "..", "lib")
 sys.path.insert(0, lib_dir)
 del lib_dir, os, sys
 APP_NAME = "TA-quolab"
-SECRET_KEY = ":quolab_server_token__{}:"
+SECRET_KEY = ":quolab_servers_token__{}:"
 
 
 class ConfigApp(admin.MConfigHandler):
     def __init__(self, *args, **kwargs):
         super(ConfigApp, self).__init__(*args, **kwargs)
         # Only allow certain capabilities to read/write these config settings via this endpoint
-        self.capabilityRead = "read_quolab_server_config"
-        self.capabilityWrite = "edit_quolab_server_config"
+        self.capabilityRead = "read_quolab_servers_config"
+        self.capabilityWrite = "edit_quolab_servers_config"
 
     def setup(self):
         '''
@@ -40,7 +40,7 @@ class ConfigApp(admin.MConfigHandler):
 
     def _fetch_token(self, stanza):
         import splunk, requests, json
-        url = '{}/services/quolab_server_fetch_token/{}'.format(splunk.getLocalServerInfo(), stanza)
+        url = '{}/services/quolab_servers_fetch_token/{}'.format(splunk.getLocalServerInfo(), stanza)
         try:
             r = requests.post(url, verify=False,
             headers={'Authorization': 'Splunk ' + self.getSessionKey(), "Decrypt":"1"})

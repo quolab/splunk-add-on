@@ -138,6 +138,8 @@ def ensure_fields(results):
     return output
 
 
+
+
 @Configuration()
 class QuoLabQueryCommand(GeneratingCommand):
     """
@@ -212,9 +214,8 @@ class QuoLabQueryCommand(GeneratingCommand):
         self.logger.debug("Fetching API endpoint configurations from Splunkd (quolab_servers.conf)")
 
         # Determine name of stanza to load
-
         try:
-            api = Entity(self.service, "quolab_server/quolab_serverendpoint/{}".format(self.server))
+            api = Entity(self.service, "quolab_servers/quolab_serversendpoint/{}".format(self.server))
         except Exception:
             self.error_exit("No known server named '{}', check quolab_servers.conf)".format(self.server),
                             "Unknown server named '{}'.  Please update 'server=' option.".format(self.server))
