@@ -1,0 +1,24 @@
+{
+    "cookiecutter": {
+        "vendor_product": "QuoLab",
+        "app_folder": "TA-quolab",
+        "app_label": "QuoLab add-on for Splunk",
+        "author_splunkid": "kintyre",
+        "author_email": "splunkbase@kintyre.co",
+        "author_company": "Kintyre",
+        "spl_class": "QuoLabQueryCommand",
+        "spl_script": "quolab_query",
+        "spl_command": "quolabquery",
+        "spl_type": "Generating",
+        "need_auth": "True",
+        "secret_name": "token",
+        "conf_name": "quolab_server",
+        "conf_fields": "url,username",
+        "rest_name": "quolab_server",
+        "json_output": "True",
+        "on_splunkbase": "True",
+        "allow_insecure": "True",
+        "_template": "https://github.com/Kintyre/cypress_ta_spl.git"
+    }
+}
+
