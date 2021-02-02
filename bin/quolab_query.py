@@ -168,7 +168,7 @@ class QuoLabQueryCommand(GeneratingCommand):
         server_name = self.server or "default"
         api = Entity(self.service, "quolab_server/quolab_serverendpoint/{}".format(server_name))
         # COOKIECUTTER-TODO: Handle all varaibles here
-        
+
         self.api_url = api["url"]
         self.api_username = api["username"]
         self.logger.debug("Entity api: %r", api["url"])

@@ -80,7 +80,7 @@ class ConfigApp(admin.MConfigHandler):
         if confDict is not None:
             for stanza, settings in confDict.items():
                 for key, val in settings.items():
-                    
+
                     if key in ['url'] and val in [None, '']:
                         val = ''
                     confInfo[stanza].append(key, val)
@@ -93,7 +93,7 @@ class ConfigApp(admin.MConfigHandler):
         normalize them, and save them somewhere
         '''
         stanza = self.callerArgs.id
-        
+
         if self.callerArgs.data['url'][0] in [None, '']:
             self.callerArgs.data['url'][0] = ''
         # What's the stanza name here?
