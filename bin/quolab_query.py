@@ -33,7 +33,6 @@ log.setLevel(logging.DEBUG)
 
 
 def sanitize_fieldname(field):
-    # XXX: Add caching, if needed
     clean = re.sub(r'[^A-Za-z0-9_.{}\[\]]', "_", field)
     # Remove leading/trailing underscores
     clean = clean.strip("_")
@@ -111,7 +110,7 @@ class QuoLabQueryCommand(GeneratingCommand):
     """
     server = Option(
         requred=False,
-        validate=validators.Match("[a-zA-Z0-9._]+"))
+        validate=validators.Match("server", "[a-zA-Z0-9._]+"))
 
     output = Option(
         require=True,
@@ -149,12 +148,21 @@ class QuoLabQueryCommand(GeneratingCommand):
 
     # Access metadata about the search, such as earliset_time for the selected time range
     self.metadata.searchinfo.earliest_time
+
+
+    *** Runtime / testing ***
+
+    Enable debug logging:
+
+        | quolabquery logging_level=DEBUG ...
+
     """
 
     def __init__(self):
-        # COOKIECUTTER-TODO: initialize these variables as appropriate  (url,username)
+        # COOKIECUTTER-TODO: initialize these variables as appropriate  (url,username,verify)
         self.api_url = None
         self.api_username = None
+        self.api_verify = None
         self.api_token = None
         # self._cache = {}
         super(QuoLabQueryCommand, self).__init__()
@@ -162,15 +170,21 @@ class QuoLabQueryCommand(GeneratingCommand):
     def prepare(self):
         super(QuoLabQueryCommand, self).prepare()
         self.logger.info("Launching version %s", __version__)
-        self.logger.debug("Fetching API endpoint configurations from Splunkd (quolab_server.conf)")
+        self.logger.debug("Fetching API endpoint configurations from Splunkd (quolab_servers.conf)")
 
         # Determine name of stanza to load
         server_name = self.server or "default"
-        api = Entity(self.service, "quolab_server/quolab_serverendpoint/{}".format(server_name))
+        try:
+            api = Entity(self.service, "quolab_server/quolab_serverendpoint/{}".format(server_name))
+        except Exception:
+            self.error_exit("No known server named '{}', check quolab_servers.conf)".format(self.server),
+                            "Check value provided for 'server=' option.")
+
         # COOKIECUTTER-TODO: Handle all varaibles here
 
         self.api_url = api["url"]
         self.api_username = api["username"]
+        self.verify = api["verify"]
         self.logger.debug("Entity api: %r", api["url"])
         self.api_token = api["token"]
         if not self.api_token:
