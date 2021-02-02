@@ -155,6 +155,7 @@ class QuoLabQueryCommand(GeneratingCommand):
 
     server = Option(
         require=False,
+        default="quolab",
         validate=validators.Match("server", r"[a-zA-Z0-9._]+"))
 
     type = Option(
@@ -212,12 +213,11 @@ class QuoLabQueryCommand(GeneratingCommand):
 
         # Determine name of stanza to load
 
-        server_name = self.server or "quolab"
         try:
-            api = Entity(self.service, "quolab_server/quolab_serverendpoint/{}".format(server_name))
+            api = Entity(self.service, "quolab_server/quolab_serverendpoint/{}".format(self.server))
         except Exception:
             self.error_exit("No known server named '{}', check quolab_servers.conf)".format(self.server),
-                            "Check value provided for 'server=' option.")
+                            "Unknown server named '{}'.  Please update 'server=' option.".format(self.server))
 
         # COOKIECUTTER-TODO: Handle all variables here
 
