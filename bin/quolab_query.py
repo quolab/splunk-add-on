@@ -191,6 +191,11 @@ class QuoLabQueryCommand(GeneratingCommand):
         self.api_url = None
         self.api_username = None
         self.api_token = None
+        self.session = requests.Session()
+
+        # XXX:  Set this up as an input in quolab_servers.conf
+        self.verify = False
+
         # self._cache = {}
         super(QuoLabQueryCommand, self).__init__()
 
@@ -203,6 +208,8 @@ class QuoLabQueryCommand(GeneratingCommand):
         server_name = self.server or "quolab"
         api = Entity(self.service, "quolab_server/quolab_serverendpoint/{}".format(server_name))
         # COOKIECUTTER-TODO: Handle all varaibles here
+
+        self.logger.info(" *******   api = %r", api)
 
         self.api_url = api["url"]
         self.api_username = api["username"]

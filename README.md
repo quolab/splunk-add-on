@@ -39,7 +39,7 @@ To setup a new 'test' configuratation stanza from the CLI, run:
 
 ```bash
 curl -ks -u admin:changeme -X POST \
-    https://127.0.0.1:8089/servicesNS/nobody/TA-quolab/quolab_server/quolab_serverendpoint/test \
+    https://127.0.0.1:8089/servicesNS/nobody/TA-quolab/quolab_server/quolab_serverendpoint/quolab \
     -d url=https://server.example/path/v1/api\
     -d username=admin\
     -d token=SECRET-VALUE
