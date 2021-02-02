@@ -15,6 +15,10 @@
         <label>username</label>
         <type>text</type>
     </input>
+    <input field="verify">
+        <label>Verify</label>
+        <type>text</type>
+    </input>
     <input field="token">
         <label>API Token/password for authentication</label>
         <type>text</type>

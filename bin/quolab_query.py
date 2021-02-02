@@ -184,16 +184,22 @@ class QuoLabQueryCommand(GeneratingCommand):
 
     # Access metadata about the search, such as earliset_time for the selected time range
     self.metadata.searchinfo.earliest_time
+
+
+    *** Runtime / testing ***
+
+    Enable debug logging:
+
+        | quolabquery logging_level=DEBUG ...
+
     """
 
     def __init__(self):
-        # COOKIECUTTER-TODO: initialize these variables as appropriate  (url,username)
+        # COOKIECUTTER-TODO: initialize these variables as appropriate  (url,username,verify)
         self.api_url = None
         self.api_username = None
         self.api_token = None
         self.session = requests.Session()
-
-        # XXX:  Set this up as an input in quolab_servers.conf
         self.verify = False
 
         # self._cache = {}
@@ -202,17 +208,22 @@ class QuoLabQueryCommand(GeneratingCommand):
     def prepare(self):
         super(QuoLabQueryCommand, self).prepare()
         self.logger.info("Launching version %s", __version__)
-        self.logger.debug("Fetching API endpoint configurations from Splunkd (quolab_server.conf)")
+        self.logger.debug("Fetching API endpoint configurations from Splunkd (quolab_servers.conf)")
 
         # Determine name of stanza to load
-        server_name = self.server or "quolab"
-        api = Entity(self.service, "quolab_server/quolab_serverendpoint/{}".format(server_name))
-        # COOKIECUTTER-TODO: Handle all varaibles here
 
-        self.logger.info(" *******   api = %r", api)
+        server_name = self.server or "quolab"
+        try:
+            api = Entity(self.service, "quolab_server/quolab_serverendpoint/{}".format(server_name))
+        except Exception:
+            self.error_exit("No known server named '{}', check quolab_servers.conf)".format(self.server),
+                            "Check value provided for 'server=' option.")
+
+        # COOKIECUTTER-TODO: Handle all variables here
 
         self.api_url = api["url"]
         self.api_username = api["username"]
+        self.verify = api["verify"]
         self.logger.debug("Entity api: %r", api["url"])
         self.api_token = api["token"]
         if not self.api_token:
