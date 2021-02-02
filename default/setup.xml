@@ -5,19 +5,20 @@
   </block>
 
   <block title="Set QuoLab add-on for Splunk"
-         endpoint="quolab_server/quolab_serverendpoint" entity="default">
+         endpoint="quolab_server/quolab_serverendpoint" entity="quolab">
 
-    <!-- COOKIECUTTER-TODO: Update field label and type-->
     <input field="url">
-        <label>API URL (endpoint)</label>
-        <type>text</type></input>
+        <label>API URL (https://hostname.domain:port)</label>
+        <type>text</type>
+    </input>
     <input field="username">
         <label>username</label>
-        <type>text</type></input>
-     <input field="token">
-        <label>API Token for authentication</label>
         <type>text</type>
-      </input>
+    </input>
+    <input field="token">
+        <label>API Token/password for authentication</label>
+        <type>text</type>
+    </input>
 
   </block>
 

@@ -32,8 +32,50 @@ log.setLevel(logging.DEBUG)
 
 
 
+# May way to invert this
+quolab_fact_from_type = {
+    "ip-address" : "fact",
+}
+
+
+quolab_clases = {
+    "sysfact" :
+        {
+            "case",
+            "timeline"
+            "connector",
+            "endpoint",
+            "user",
+            "group",
+            "tag",
+        },
+    "fact":
+        {
+            "ip-address",
+            "url",
+            "hostname",
+            "hash"          #?  MD5 vs sha256?
+            "file",
+            "email",
+            "domain",
+        },
+    "sysref":
+        {
+            "observed-by",
+            "commented-by",
+        },
+    "ref":
+         {
+
+         },
+}
+
+
+
+
+
+
 def sanitize_fieldname(field):
-    # XXX: Add caching, if needed
     clean = re.sub(r'[^A-Za-z0-9_.{}\[\]]', "_", field)
     # Remove leading/trailing underscores
     clean = clean.strip("_")
@@ -99,37 +141,30 @@ def ensure_fields(results):
 @Configuration()
 class QuoLabQueryCommand(GeneratingCommand):
     """
-
     ##Syntax
 
     .. code-block::
-        quolabquery field=input
+        quolab_query type=X value
+        quolab_query type=ip-address value=1.2.3.4
+        quolab_query type=ip-address 1.2.3.4d
 
     ##Description
 
     ##Example
     """
+
     server = Option(
-        requred=False,
-        validate=validators.Match("[a-zA-Z0-9._]+"))
-
-    output = Option(
-        require=True,
-        validate=validators.Fieldname())
-
-    field_set = Option(
-        require=True,
-        validate=validators.Set("a", "b", "c"))
-
-    field_int = Option(
         require=False,
-        default=32,
-        validate=validators.Integer(1,128))
+        validate=validators.Match("server", r"[a-zA-Z0-9._]+"))
 
-    field_bool = Option(
-        require=False,
-        default=True,
-        validate=validators.Boolean())
+    type = Option(
+        require=True,
+        validate=validators.Set("ip-address", "url", "hostname")
+    )
+
+    value = Option(
+        require=True
+    )
 
     """ COOKIECUTTER-TODO:  Use or delete these tips'n'tricks
 
@@ -165,10 +200,10 @@ class QuoLabQueryCommand(GeneratingCommand):
         self.logger.debug("Fetching API endpoint configurations from Splunkd (quolab_server.conf)")
 
         # Determine name of stanza to load
-        server_name = self.server or "default"
+        server_name = self.server or "quolab"
         api = Entity(self.service, "quolab_server/quolab_serverendpoint/{}".format(server_name))
         # COOKIECUTTER-TODO: Handle all varaibles here
-        
+
         self.api_url = api["url"]
         self.api_username = api["username"]
         self.logger.debug("Entity api: %r", api["url"])
@@ -177,6 +212,7 @@ class QuoLabQueryCommand(GeneratingCommand):
             self.error_exit("Missing api_token.  Did you run setup?",
                             "Check the configuration.  Unable to fetch data with token.")
 
+    '''
     def _query_external_api(self, query_string):
         # COOKIECUTTER-TODO: Implement remote QuoLab API query here
         """ Handle the query to QuoLab API that drives this SPL command
@@ -201,17 +237,85 @@ class QuoLabQueryCommand(GeneratingCommand):
         elif len(result) == 0:
             result = []
         return (None, result)
+    '''
+
+    def test01_TAGS(self):
+        # TAG
+        session = self.session
+        url = "{}/v1/tag".format(self.api_url)
+        response = session.request("GET", url,
+                                   auth=HTTPBasicAuth(self.api_username, self.api_token),
+                                   verify=self.verify)
+
+        """
+        return [
+            { "_raw": response.content.decode("utf-8") }
+        ]
+        """
+        body = response.json()
 
 
+        # Typical patttern
+        # { "root" : [  {content}  ] }
+
+        # Quolab query for   /v1/tags
+        # { "tags: { "key" : { content }, } }
+        root_name = "tags"
+
+        # root is an object, with direct discenents
+
+        for (tag, value) in body[root_name].items():
+            item = dict(id=tag, tag=value)
+            row = (splunk_dot_notation(item))
+            row["_raw"] = json.dumps(item)
+            row["_time"] = time.time()
+            yield row
+
+
+    def test02_QUERY(self):
+        # CATALOG QUERY
+        session = self.session
+        data = {
+            "query": {
+                "class": "sysfact",
+                "type": "case"
+            },
+            "limit": 5,
+            "facets": {
+                "display": 1,
+                "tagged": True
+            }
+        }
+
+        url = "{}/v1/catalog/query".format(self.api_url)
+        response = session.request("POST", url,
+                data=json.dumps(data),
+                auth=HTTPBasicAuth(self.api_username, self.api_token),
+                verify=self.verify)
+
+        body = response.json()
+
+        if "status" in body or "message" in body:
+            self.write_error("QuoLab API returned: {}: {}".format(body.get("status", "?"), body.get("message", "(no mesage")))
+            self.logger.error("Unexpected status response from query.   status=%r message=%r", body.get("status"), body.get("message", ""))
+            return
+
+        # Make this debug?
+        self.logger.info("Response body:   %s", body)
+
+        for record in body["records"]:
+            result = (splunk_dot_notation(record))
+            result["_raw"] = json.dumps(record)
+            result["_time"] = time.time()
+            yield result
 
     def generate(self):
-        for i in range(100):
-            yield { "_raw": "Sample event {}".format(i),
-                    self.output: "This is the field with a new value!",
-                    "_time" : time.time()}
 
+        session = requests.Session()
+        #results = list(self.test01_TAGS())
+        results = list(self.test02_QUERY())
 
-
+        return ensure_fields(results)
 
 
 if __name__ == '__main__':

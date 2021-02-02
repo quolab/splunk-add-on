@@ -12,7 +12,7 @@
         "spl_type": "Generating",
         "need_auth": "True",
         "secret_name": "token",
-        "conf_name": "quolab_server",
+        "conf_name": "quolab_server",  # make plural!
         "conf_fields": "url,username",
         "rest_name": "quolab_server",
         "json_output": "True",
