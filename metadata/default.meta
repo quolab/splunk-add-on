@@ -8,7 +8,7 @@ access = read : [], write : [ admin, sc_admin ]
 export = system
 
 [commands/quolabquery]
-access = read : [ role_quolab_server_user ], write : [ admin, sc_admin ]
+access = read : [ role_quolab_servers_user ], write : [ admin, sc_admin ]
 
 [eventtypes]
 export = system

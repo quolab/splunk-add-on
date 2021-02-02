@@ -5,7 +5,7 @@
   </block>
 
   <block title="Set QuoLab add-on for Splunk"
-         endpoint="quolab_server/quolab_serverendpoint" entity="default">
+         endpoint="quolab_servers/quolab_serversendpoint" entity="default">
 
     <!-- COOKIECUTTER-TODO: Update field label and type-->
     <input field="url">
