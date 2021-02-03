@@ -165,12 +165,16 @@ class QuoLabQueryCommand(GeneratingCommand):
         validate=validators.Match("server", r"[a-zA-Z0-9._]+"))
 
     type = Option(
-        require=True,
+        require=False,
         validate=validators.Set("ip-address", "url", "hostname")
     )
 
     value = Option(
-        require=True
+        require=False
+    )
+
+    query = Option(
+        require=False
     )
 
     """ COOKIECUTTER-TODO:  Use or delete these tips'n'tricks
@@ -215,6 +219,17 @@ class QuoLabQueryCommand(GeneratingCommand):
     def prepare(self):
         super(QuoLabQueryCommand, self).prepare()
         self.logger.info("Launching version %s", __version__)
+
+
+        if self.query:
+            self.mode = "advanced"
+        elif self.type and self.value:
+            self.mode = "simple"
+        else:
+            self.write_error("Must provide either 'query' or both 'type' and 'value'")
+            sys.exit(1)
+
+
         self.logger.debug("Fetching API endpoint configurations from Splunkd (quolab_servers.conf)")
 
         # Determine name of stanza to load
@@ -235,32 +250,54 @@ class QuoLabQueryCommand(GeneratingCommand):
             self.error_exit("Check the configuration. Unable to fetch data from {} without token.".format(self.api_url),
                             "Missing 'token'.  Did you run setup?")
 
-    '''
-    def _query_external_api(self, query_string):
-        # COOKIECUTTER-TODO: Implement remote QuoLab API query here
+    def _query_catalog(self, query_string):
         """ Handle the query to QuoLab API that drives this SPL command
-        Returns (error, payload)
+        Returns (error, results)
         """
-        query_params = {
-            "search" : query_string
-        }
+        # CATALOG QUERY
+        session = self.session
+
+        try:
+            query = json.loads(query_string)
+        except ValueError as e:
+            #? logger??  or not?
+            self.write_error("Invalid Json:  {}".format(e), "Invalid Json")
+            return
+
+        url = "{}/v1/catalog/query".format(self.api_url)
         headers = {
             'content-type': "application/json",
-            'x-api-token': self.api_token,
-            'cache-control': "no-cache"
         }
-        try:
-            response = requests.request("GET", self.api_url, headers=headers, params=query_params)
-        except Exception:
-            self.logger.exception("Failure while calling QuoLab API")
-            return ("API Call failed", {})
-        result = response.json()
-        if isinstance(result, dict) and "message" in result:
-            return ("API returned message:  {}".format(result["message"]), result)
-        elif len(result) == 0:
-            result = []
-        return (None, result)
-    '''
+        response = session.request("POST", url,
+                data=json.dumps(query),
+                headers=headers,
+                auth=HTTPBasicAuth(self.api_username, self.api_token),
+                verify=self.verify)
+
+        body = response.json()
+
+        if "status" in body or "message" in body:
+            status = body.get("status", response.status_code)
+            message = body.get("message", "N/A")
+            self.logger.error("Unexpected status response from query.  status=%r message=%r query=%r", status, message, query)
+            self.write_error(
+                "QuoLab API returned: status={} message={!r} query={!r}".format(status, message, query),
+                "QuoLab query failed:  [{}]  {}}".format(status, query))
+            return
+
+        response.raise_for_status()
+
+        # Make this debug?
+        self.logger.info("Response body:   %s", body)
+
+        # XXX:  Explict check for missing "records"  (not empty -- that's okay)
+
+        for record in body["records"]:
+            result = (splunk_dot_notation(record))
+            result["_raw"] = json.dumps(record)
+            result["_time"] = time.time()
+            yield result
+
 
     def test01_TAGS(self):
         # TAG
@@ -270,13 +307,7 @@ class QuoLabQueryCommand(GeneratingCommand):
                                    auth=HTTPBasicAuth(self.api_username, self.api_token),
                                    verify=self.verify)
 
-        """
-        return [
-            { "_raw": response.content.decode("utf-8") }
-        ]
-        """
         body = response.json()
-
 
         # Typical patttern
         # { "root" : [  {content}  ] }
@@ -294,11 +325,16 @@ class QuoLabQueryCommand(GeneratingCommand):
             row["_time"] = time.time()
             yield row
 
+    def generate(self):
 
-    def test02_QUERY(self):
-        # CATALOG QUERY
-        session = self.session
-        data = {
+        session = requests.Session()
+        #results = list(self.test01_TAGS())
+        # results = list(self.test02_QUERY())
+
+
+
+        '''
+        query  = {
             "query": {
                 "class": "sysfact",
                 "type": "case"
@@ -309,34 +345,13 @@ class QuoLabQueryCommand(GeneratingCommand):
                 "tagged": True
             }
         }
+        '''
 
-        url = "{}/v1/catalog/query".format(self.api_url)
-        response = session.request("POST", url,
-                data=json.dumps(data),
-                auth=HTTPBasicAuth(self.api_username, self.api_token),
-                verify=self.verify)
+        if self.mode == "advanced":
+            #results = self._query_catalog(json.dumps(query))
 
-        body = response.json()
-
-        if "status" in body or "message" in body:
-            self.write_error("QuoLab API returned: {}: {}".format(body.get("status", "?"), body.get("message", "(no mesage")))
-            self.logger.error("Unexpected status response from query.   status=%r message=%r", body.get("status"), body.get("message", ""))
-            return
-
-        # Make this debug?
-        self.logger.info("Response body:   %s", body)
-
-        for record in body["records"]:
-            result = (splunk_dot_notation(record))
-            result["_raw"] = json.dumps(record)
-            result["_time"] = time.time()
-            yield result
-
-    def generate(self):
-
-        session = requests.Session()
-        #results = list(self.test01_TAGS())
-        results = list(self.test02_QUERY())
+            query = self.query.replace("'", '"')
+            results = self._query_catalog(query)
 
         return ensure_fields(results)
 

@@ -51,6 +51,12 @@ curl -ks -u admin:changeme -X POST \
 If you would like to develop or build this TA from source, see the [development](./DEVELOPMENT.md) documentation.
 
 
+## Example usage
+
+```
+| quolabquery query="{'query':{'class': 'sysfact', 'type': 'case' },'limit': 15, 'facets': {'display': 1,'tagged': true}}"
+```
+
 ## Troubleshoot
 
 ### Rest endpoint
