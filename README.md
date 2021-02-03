@@ -42,7 +42,7 @@ curl -ks -u admin:changeme -X POST \
     https://127.0.0.1:8089/servicesNS/nobody/TA-quolab/quolab_servers/quolab_serversendpoint/quolab \
     -d url=https://server.example/path/v1/api\
     -d username=admin\
-    -d verify=Default for Verify\
+    -d verify=False\
     -d token=SECRET-VALUE
 ```
 
@@ -72,8 +72,8 @@ index=_internal sourcetype=splunkd SetupAdminHandler quolab_servers/quolab_serve
 
 ## Reference
 
- * **API Docs**:  https://....
+ * `v1/catalog/query` (See online API documentation in your running QuoLab environment.
 
 
-This addon was built from the [Kintyre rest addon](https://github.com/Kintyre/cypress_ta_rest) [cookiecutter](https://github.com/audreyr/cookiecutter) project.
+This addon was built from the [Kintyre spl addon](https://github.com/Kintyre/cypress_ta_spl) [cookiecutter](https://github.com/audreyr/cookiecutter) project.
 

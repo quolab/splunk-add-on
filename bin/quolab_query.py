@@ -138,6 +138,10 @@ def ensure_fields(results):
     return output
 
 
+def as_bool(s):
+    return s.lower()[0] in ("t", "y", "e", "1")
+
+
 
 
 @Configuration()
@@ -224,12 +228,12 @@ class QuoLabQueryCommand(GeneratingCommand):
 
         self.api_url = api["url"]
         self.api_username = api["username"]
-        self.verify = api["verify"]
-        self.logger.debug("Entity api: %r", api["url"])
+        self.verify = as_bool(api["verify"])
+        self.logger.debug("Entity api: %r", self.api_url)
         self.api_token = api["token"]
         if not self.api_token:
-            self.error_exit("Missing api_token.  Did you run setup?",
-                            "Check the configuration.  Unable to fetch data with token.")
+            self.error_exit("Check the configuration. Unable to fetch data from {} without token.".format(self.api_url),
+                            "Missing 'token'.  Did you run setup?")
 
     '''
     def _query_external_api(self, query_string):
