@@ -21,7 +21,7 @@ from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration,
 
 
 
-""" http debug loggig
+""" http debug logging
 import logging
 from http.client import HTTPConnection  # py3
 
@@ -38,7 +38,7 @@ quolab_fact_from_type = {
 }
 
 
-quolab_clases = {
+quolab_classes = {
     "sysfact" :
         {
             "case",
@@ -166,7 +166,8 @@ class QuoLabQueryCommand(GeneratingCommand):
 
     type = Option(
         require=False,
-        validate=validators.Set("ip-address", "url", "hostname")
+        # XXX: Make dynamce from quolab_classes!
+        validate=validators.Set("ip-address", "url", "hostname","endpoint")
     )
 
     value = Option(
@@ -175,6 +176,19 @@ class QuoLabQueryCommand(GeneratingCommand):
 
     query = Option(
         require=False
+    )
+
+    limit = Option(
+        require=False,
+        default=100,
+        validate=validators.Integer(1, 10000)
+    )
+
+    # XXX:  Figure out a way to accept multiple values here:  comma sep?
+    facets = Option(
+        require=False,
+        default=None,
+        validate=validators.Set("display", "tagged", "actions", "sources")
     )
 
     """ COOKIECUTTER-TODO:  Use or delete these tips'n'tricks
@@ -220,15 +234,14 @@ class QuoLabQueryCommand(GeneratingCommand):
         super(QuoLabQueryCommand, self).prepare()
         self.logger.info("Launching version %s", __version__)
 
-
-        if self.query:
+        if self.query and not self.type:
             self.mode = "advanced"
-        elif self.type and self.value:
+        elif self.type and not self.query:
             self.mode = "simple"
+            # XXX:  Confirm NOT:  self.query and not self.value
         else:
-            self.write_error("Must provide either 'query' or both 'type' and 'value'")
+            self.write_error("Must provide either 'query' or 'type' but not both")
             sys.exit(1)
-
 
         self.logger.debug("Fetching API endpoint configurations from Splunkd (quolab_servers.conf)")
 
@@ -239,8 +252,6 @@ class QuoLabQueryCommand(GeneratingCommand):
             self.error_exit("No known server named '{}', check quolab_servers.conf)".format(self.server),
                             "Unknown server named '{}'.  Please update 'server=' option.".format(self.server))
 
-        # COOKIECUTTER-TODO: Handle all variables here
-
         self.api_url = api["url"]
         self.api_username = api["username"]
         self.verify = as_bool(api["verify"])
@@ -250,19 +261,12 @@ class QuoLabQueryCommand(GeneratingCommand):
             self.error_exit("Check the configuration. Unable to fetch data from {} without token.".format(self.api_url),
                             "Missing 'token'.  Did you run setup?")
 
-    def _query_catalog(self, query_string):
+    def _query_catalog(self, query):
         """ Handle the query to QuoLab API that drives this SPL command
-        Returns (error, results)
+        Returns [results]
         """
         # CATALOG QUERY
         session = self.session
-
-        try:
-            query = json.loads(query_string)
-        except ValueError as e:
-            #? logger??  or not?
-            self.write_error("Invalid Json:  {}".format(e), "Invalid Json")
-            return
 
         url = "{}/v1/catalog/query".format(self.api_url)
         headers = {
@@ -273,9 +277,7 @@ class QuoLabQueryCommand(GeneratingCommand):
                 headers=headers,
                 auth=HTTPBasicAuth(self.api_username, self.api_token),
                 verify=self.verify)
-
         body = response.json()
-
         if "status" in body or "message" in body:
             status = body.get("status", response.status_code)
             message = body.get("message", "N/A")
@@ -285,12 +287,12 @@ class QuoLabQueryCommand(GeneratingCommand):
                 "QuoLab query failed:  [{}]  {}}".format(status, query))
             return
 
+        # If a non-sucess exit code was returned, and the resulting object doesn't have message/status, then just raise an execption.
         response.raise_for_status()
 
-        # Make this debug?
-        self.logger.info("Response body:   %s", body)
+        self.logger.debug("Response body:   %s", body)
 
-        # XXX:  Explict check for missing "records"  (not empty -- that's okay)
+        # XXX:  Add explict check for missing "records"  (not empty -- that's okay)
 
         for record in body["records"]:
             result = (splunk_dot_notation(record))
@@ -298,7 +300,7 @@ class QuoLabQueryCommand(GeneratingCommand):
             result["_time"] = time.time()
             yield result
 
-
+    '''
     def test01_TAGS(self):
         # TAG
         session = self.session
@@ -324,34 +326,50 @@ class QuoLabQueryCommand(GeneratingCommand):
             row["_raw"] = json.dumps(item)
             row["_time"] = time.time()
             yield row
+    '''
 
     def generate(self):
-
         session = requests.Session()
-        #results = list(self.test01_TAGS())
-        # results = list(self.test02_QUERY())
-
-
-
-        '''
-        query  = {
-            "query": {
-                "class": "sysfact",
-                "type": "case"
-            },
-            "limit": 5,
-            "facets": {
-                "display": 1,
-                "tagged": True
-            }
-        }
-        '''
 
         if self.mode == "advanced":
-            #results = self._query_catalog(json.dumps(query))
-
             query = self.query.replace("'", '"')
-            results = self._query_catalog(query)
+            try:
+                query = json.loads(query)
+            except ValueError as e:
+                self.logger.info("Invalid JSON given as input.  %s  Input:\n%s", e, query)
+                self.write_error("Invalid JSON:  {}".format(e))
+                return
+
+            # Handle scenario where top-level 'query' is provided.  Otherwise, assume given content should be placed under 'query'
+            # The QuoLab API handles this either way, but to add limit and facets an explicit 'query' must be present.
+            if "query" not in query:
+                query = {"query": query}
+
+        else:
+            cls = None
+            for cls_name, cls_set in quolab_classes.items():
+                if self.type in cls_set:
+                    cls = cls_name
+                    break
+            else:
+                raise ValueError("Unknown type of '{}'".format(self.type))
+            query = {
+                "query": {
+                    "class": cls,
+                    "type": self.type,
+                }
+            }
+
+            if self.value:
+                query["query"]["id"] = self.value
+
+        if self.limit:
+            query["limit"] = self.limit
+
+        if self.facets:
+            query.setdefault("facets", {})[self.facets] = 1
+
+        results = self._query_catalog(query)
 
         return ensure_fields(results)
 
