@@ -11,6 +11,12 @@
 
 ## Troubleshooting
 
+
+Enable debug logging:
+```
+| quolabquery logging_level=DEBUG query=...
+```
+
 Internal/script errors:
 ```
 index=_internal (source=*quolab.log*) OR (sourcetype=splunkd quolab_query.py)

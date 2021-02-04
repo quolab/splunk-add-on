@@ -195,33 +195,12 @@ class QuoLabQueryCommand(GeneratingCommand):
         validate=validators.Set("display", "tagged", "actions", "sources")
     )
 
-    """ COOKIECUTTER-TODO:  Use or delete these tips'n'tricks
-
-    *** Class-level stuff ***
-
     # Always run on the searchhead (not the indexers)
     distributed = False
 
     # Don't allow this to run in preview mode to limit API hits
     run_in_preview = False
 
-
-    *** Method-level stuff ***
-
-    # Log the commands given to the SPL command:
-    self.logger.debug('QuoLabQueryCommand: %s', self)
-
-    # Access metadata about the search, such as earliset_time for the selected time range
-    self.metadata.searchinfo.earliest_time
-
-
-    *** Runtime / testing ***
-
-    Enable debug logging:
-
-        | quolabquery logging_level=DEBUG ...
-
-    """
 
     def __init__(self):
         # COOKIECUTTER-TODO: initialize these variables as appropriate  (url,username,verify)
@@ -265,7 +244,7 @@ class QuoLabQueryCommand(GeneratingCommand):
             self.error_exit("Check the configuration. Unable to fetch data from {} without token.".format(self.api_url),
                             "Missing 'token'.  Did you run setup?")
 
-    def _query_catalog(self, query):
+    def _query_catalog(self, query, query_limit, max_batch_size=250):
         """ Handle the query to QuoLab API that drives this SPL command
         Returns [results]
         """
@@ -276,63 +255,57 @@ class QuoLabQueryCommand(GeneratingCommand):
         headers = {
             'content-type': "application/json",
         }
-
-        response = session.request("POST", url,
+        # XXX: Revise this logic to better handle query_limit that's within a few % of max_batch_size.
+        #   Example:  if limit=501, don't query 3 x 250 records, and then throw away the 249.  Should be able to optimize per-query limit to accomidate.
+        query["limit"] = query_limit if query_limit < max_batch_size else max_batch_size
+        i = http_calls = 0
+        while True:
+            response = session.request("POST", url,
                 data=json.dumps(query),
                 headers=headers,
                 auth=HTTPBasicAuth(self.api_username, self.api_token),
                 verify=self.verify)
-        body = response.json()
-        if "status" in body or "message" in body:
-            status = body.get("status", response.status_code)
-            message = body.get("message", "")
-            self.logger.error("QuoLab API returned unexpected status response from query.  status=%r message=%r query=%r", status, message, query)
-            self.write_error("QuoLab query failed:  {} ({})", message, status)
-            return
+            http_calls += 1
 
-        # If a non-sucess exit code was returned, and the resulting object doesn't have message/status, then just raise an execption.
-        response.raise_for_status()
+            body = response.json()
+            if "status" in body or "message" in body:
+                status = body.get("status", response.status_code)
+                message = body.get("message", "")
+                self.logger.error("QuoLab API returned unexpected status response from query.  status=%r message=%r query=%r", status, message, query)
+                self.write_error("QuoLab query failed:  {} ({})", message, status)
+                return
 
-        self.logger.debug("Response body:   %s", body)
+            # If a non-sucess exit code was returned, and the resulting object doesn't have message/status, then just raise an execption.
+            response.raise_for_status()
 
-        # XXX:  Add explict check for missing "records"  (not empty -- that's okay)
-        for record in body["records"]:
-            result = (splunk_dot_notation(record))
-            result["_raw"] = json.dumps(record)
-            # Q:  Are there ever fields that should be returned as _time instead of system clock time?
-            result["_time"] = time.time()
-            yield result
+            self.logger.debug("Response body:   %s", body)
 
-    '''
-    def test01_TAGS(self):
-        # TAG
-        session = self.session
-        url = "{}/v1/tag".format(self.api_url)
-        response = session.request("GET", url,
-                                   auth=HTTPBasicAuth(self.api_username, self.api_token),
-                                   verify=self.verify)
+            records = body["records"]
+            for record in body["records"]:
+                result = (splunk_dot_notation(record))
+                result["_raw"] = json.dumps(record)
+                # Q:  Are there ever fields that should be returned as _time instead of system clock time?
+                result["_time"] = time.time()
+                yield result
+                i+= 1
+                if i >= query_limit:
+                    break
 
-        body = response.json()
+            # XXX: Add overall timeout check
+            if i >= query_limit:
+                break
 
-        # Typical patttern
-        # { "root" : [  {content}  ] }
-
-        # Quolab query for   /v1/tags
-        # { "tags: { "key" : { content }, } }
-        root_name = "tags"
-
-        # root is an object, with direct discenents
-
-        for (tag, value) in body[root_name].items():
-            item = dict(id=tag, tag=value)
-            row = (splunk_dot_notation(item))
-            row["_raw"] = json.dumps(item)
-            row["_time"] = time.time()
-            yield row
-    '''
+            ellipsis = body.get("ellipsis", None)
+            if ellipsis:
+                self.logger.debug("Query next batch.  i=%d, query_limit=%d, limit=%d, ellipsis=%s", i, query_limit, query["limit"], ellipsis)
+                query["resume"] = ellipsis
+            else:
+                break
+        self.logger.info("Query/return efficiency: http_calls=%d, query_limit=%d, per_post_limit=%d", http_calls, query_limit, query["limit"])
 
 
     def generate(self):
+        # Because the splunklib search interface does a *really* bad job a reporting exceptions / logging stack traces :-(
         try:
             return self._generate()
         except Exception:
@@ -373,8 +346,6 @@ class QuoLabQueryCommand(GeneratingCommand):
             if self.value:
                 query["query"]["id"] = self.value
 
-        if self.limit:
-            query["limit"] = self.limit
         if not "order" in query:
             # Q: Support ordering by different fields/keys?  Or require full query syntax for that?
             query["order"] = ["id", self.order]
@@ -382,7 +353,7 @@ class QuoLabQueryCommand(GeneratingCommand):
         if self.facets:
             query.setdefault("facets", {})[self.facets] = 1
 
-        results = self._query_catalog(query)
+        results = self._query_catalog(query, self.limit)
 
         return ensure_fields(results)
 
