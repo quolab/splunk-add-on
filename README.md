@@ -56,6 +56,7 @@ If you would like to develop or build this TA from source, see the [development]
 ```
 | quolabquery query="{'query':{'class': 'sysfact', 'type': 'case' },'limit': 15, 'facets': {'display': 1,'tagged': true}}"
 
+| quolabquery query="[{'class': 'sysfact', 'type': 'endpoint'}, {'class': 'sysfact', 'type': 'connector'}]" limit=100
 
 | quolabquery query="{'class': 'sysfact', 'type': 'endpoint'}" limit=100 facets=display
 
@@ -84,7 +85,11 @@ index=_internal sourcetype=splunkd SetupAdminHandler quolab_servers/quolab_serve
 
 ## Reference
 
- * `v1/catalog/query` (See online API documentation in your running QuoLab environment.
+See the API documentation from the web interface of your local QuoLab server.  Click *Help* -> *API Documentation*.  The documentation is available in the OpenAPI specification.
+
+This SPL command uses the following API calls:
+
+ * `v1/catalog/query` - the "swiss-army-knife" of quolab data querying. Objects can be queried from QuoLab's graph data model, and aggregated, and/or enriched using facets as necessary.
 
 
 This addon was built from the [Kintyre spl addon](https://github.com/Kintyre/cypress_ta_spl) [cookiecutter](https://github.com/audreyr/cookiecutter) project.

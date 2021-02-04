@@ -30,49 +30,45 @@ log.setLevel(logging.DEBUG)
 """
 
 
-
-
-# May way to invert this
-quolab_fact_from_type = {
-    "ip-address" : "fact",
-}
-
-
 quolab_classes = {
-    "sysfact" :
-        {
-            "case",
-            "timeline"
-            "connector",
-            "endpoint",
-            "user",
-            "group",
-            "tag",
-        },
-    "fact":
-        {
-            "ip-address",
-            "url",
-            "hostname",
-            "hash"          #?  MD5 vs sha256?
-            "file",
-            "email",
-            "domain",
-        },
-    "sysref":
-        {
-            "observed-by",
-            "commented-by",
-        },
-    "ref":
-         {
-
-         },
+    "sysfact": {
+        "case",
+        "timeline"
+        "connector",
+        "endpoint",
+        "user",
+        "group",
+        "tag",
+    },
+    "fact":  {
+        "ip-address",
+        "url",
+        "hostname",
+        "hash"  # ?  MD5 vs sha256?
+        "file",
+        "email",
+        "domain",
+    },
+    "sysref": {
+        "observed-by",
+        "commented-by",
+    },
+    "ref": {
+    },
 }
+quolab_types = set()
+quolab_class_from_type = {}
 
 
-
-
+def init():
+    for class_, types in quolab_classes.items():
+        for type_ in types:
+            # XXX: This assertion would be better as a unittest
+            assert type_ not in quolab_types, \
+                "Duplicate entry for {}:  {} vs {}".format(type_, quolab_class_from_type[type_], class_)
+            quolab_types.add(type_)
+            quolab_class_from_type[type_] = class_
+init()
 
 
 def sanitize_fieldname(field):
@@ -109,6 +105,10 @@ def dict_to_splunk_fields(obj, prefix=()):
 
 
 def splunk_dot_notation(obj):
+    """
+    Convert json object (python dictionary) into a list of fields as Splunk does by default.
+    Think of this as the same as calling Splunk's "spath" SPL command.
+    """
     d = {}
     if not isinstance(obj, dict):
         raise ValueError("Expected obj to be a dictionary, received {}".format(type(obj)))
@@ -121,8 +121,6 @@ def splunk_dot_notation(obj):
         else:
             d[field_name] = value
     return d
-
-
 
 
 def ensure_fields(results):
@@ -166,8 +164,7 @@ class QuoLabQueryCommand(GeneratingCommand):
 
     type = Option(
         require=False,
-        # XXX: Make dynamce from quolab_classes!
-        validate=validators.Set("ip-address", "url", "hostname","endpoint")
+        validate=validators.Set(*quolab_types)
     )
 
     value = Option(
@@ -181,7 +178,14 @@ class QuoLabQueryCommand(GeneratingCommand):
     limit = Option(
         require=False,
         default=100,
-        validate=validators.Integer(1, 10000)
+        validate=validators.Integer(1, 100000)
+    )
+
+    order = Option(
+        require=False,
+        default="ascending",
+        # XXX: Find out what the API values are legit:
+        validate=validators.Set("ascending", "descending")
     )
 
     # XXX:  Figure out a way to accept multiple values here:  comma sep?
@@ -272,6 +276,7 @@ class QuoLabQueryCommand(GeneratingCommand):
         headers = {
             'content-type': "application/json",
         }
+
         response = session.request("POST", url,
                 data=json.dumps(query),
                 headers=headers,
@@ -280,11 +285,9 @@ class QuoLabQueryCommand(GeneratingCommand):
         body = response.json()
         if "status" in body or "message" in body:
             status = body.get("status", response.status_code)
-            message = body.get("message", "N/A")
-            self.logger.error("Unexpected status response from query.  status=%r message=%r query=%r", status, message, query)
-            self.write_error(
-                "QuoLab API returned: status={} message={!r} query={!r}".format(status, message, query),
-                "QuoLab query failed:  [{}]  {}}".format(status, query))
+            message = body.get("message", "")
+            self.logger.error("QuoLab API returned unexpected status response from query.  status=%r message=%r query=%r", status, message, query)
+            self.write_error("QuoLab query failed:  {} ({})", message, status)
             return
 
         # If a non-sucess exit code was returned, and the resulting object doesn't have message/status, then just raise an execption.
@@ -293,10 +296,10 @@ class QuoLabQueryCommand(GeneratingCommand):
         self.logger.debug("Response body:   %s", body)
 
         # XXX:  Add explict check for missing "records"  (not empty -- that's okay)
-
         for record in body["records"]:
             result = (splunk_dot_notation(record))
             result["_raw"] = json.dumps(record)
+            # Q:  Are there ever fields that should be returned as _time instead of system clock time?
             result["_time"] = time.time()
             yield result
 
@@ -328,7 +331,15 @@ class QuoLabQueryCommand(GeneratingCommand):
             yield row
     '''
 
+
     def generate(self):
+        try:
+            return self._generate()
+        except Exception:
+            self.logger.exception("Unhandled top-level exception")
+            sys.exit(1)
+
+    def _generate(self):
         session = requests.Session()
 
         if self.mode == "advanced":
@@ -337,34 +348,36 @@ class QuoLabQueryCommand(GeneratingCommand):
                 query = json.loads(query)
             except ValueError as e:
                 self.logger.info("Invalid JSON given as input.  %s  Input:\n%s", e, query)
-                self.write_error("Invalid JSON:  {}".format(e))
-                return
+                self.write_error("Invalid JSON:  {}", e)
+                sys.exit(1)
 
             # Handle scenario where top-level 'query' is provided.  Otherwise, assume given content should be placed under 'query'
             # The QuoLab API handles this either way, but to add limit and facets an explicit 'query' must be present.
             if "query" not in query:
                 query = {"query": query}
 
-        else:
-            cls = None
-            for cls_name, cls_set in quolab_classes.items():
-                if self.type in cls_set:
-                    cls = cls_name
-                    break
-            else:
-                raise ValueError("Unknown type of '{}'".format(self.type))
+        elif self.mode == "simple":
+            try:
+                class_ = quolab_class_from_type[self.type]
+            except KeyError:
+                self.write_error("No class known for type={}", self.type)
+                sys.exit(1)
+
             query = {
                 "query": {
-                    "class": cls,
+                    "class": class_,
                     "type": self.type,
                 }
             }
-
+            # XXX:  Support multiple values
             if self.value:
                 query["query"]["id"] = self.value
 
         if self.limit:
             query["limit"] = self.limit
+        if not "order" in query:
+            # Q: Support ordering by different fields/keys?  Or require full query syntax for that?
+            query["order"] = ["id", self.order]
 
         if self.facets:
             query.setdefault("facets", {})[self.facets] = 1
@@ -372,6 +385,15 @@ class QuoLabQueryCommand(GeneratingCommand):
         results = self._query_catalog(query)
 
         return ensure_fields(results)
+
+
+def build_searchbnf(stream=sys.stdout):
+    """
+    >>> import quolab_query
+    >>> quolab_query.build_searchbnf()
+    """
+    stream.write("[quolab-types]\n")
+    stream.write("syntax = ({})\n".format("|".join(sorted(quolab_types))))
 
 
 if __name__ == '__main__':
