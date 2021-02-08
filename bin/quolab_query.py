@@ -353,6 +353,7 @@ class QuoLabQueryCommand(GeneratingCommand):
         if self.facets:
             query.setdefault("facets", {})[self.facets] = 1
 
+        self.write_info("Query sent to {} server: {}", self.server, json.dumps(query))
         results = self._query_catalog(query, self.limit)
 
         return ensure_fields(results)
