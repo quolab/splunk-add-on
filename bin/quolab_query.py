@@ -72,7 +72,7 @@ init()
 
 
 def sanitize_fieldname(field):
-    clean = re.sub(r'[^A-Za-z0-9_.{}\[\]]', "_", field)
+    clean = re.sub(r'[^A-Za-z0-9_.{}\[\]-]', "_", field)
     # Remove leading/trailing underscores
     clean = clean.strip("_")
     return clean
