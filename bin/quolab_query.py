@@ -31,44 +31,129 @@ log.setLevel(logging.DEBUG)
 
 
 quolab_classes = {
-    "sysfact": {
-        "case",
-        "timeline"
-        "connector",
-        "endpoint",
-        "user",
-        "group",
-        "tag",
-    },
-    "fact":  {
-        "ip-address",
-        "url",
-        "hostname",
-        "hash"  # ?  MD5 vs sha256?
-        "file",
-        "email",
-        "domain",
-    },
-    "sysref": {
-        "observed-by",
-        "commented-by",
-    },
-    "ref": {
-    },
+    'fact': [
+        'autonomous-system',
+        'certificate',
+        'domain',
+        'email',
+        'envelope',
+        'file',
+        'function',
+        'hostname',
+        'import-table',
+        'ip-address',
+        'mutex',
+        'process',
+        'registry-key',
+        'url',
+        'wallet',
+        'export-table',
+        'malware',
+        'blob',
+        'ttp',
+        'organization',
+        'persona',
+        'region',
+        'tor-descriptor',
+        'transaction',
+        'yara-rule',
+    ],
+    'reference': [
+        'accesses',
+        'contains',
+        'creates',
+        'identified-as',
+        'loads',
+        'matches',
+        'relates-to',
+        'signed-by',
+        'receives-from',
+        'sends-to',
+        'delivered',
+        'resolved-to',
+    ],
+    'annotation': [
+        'attribute',
+        'text',
+        'interpreted-as',
+        'known-as',
+        'geodata',
+        'report',
+    ],
+    'sysfact': [
+        'case',
+        'resource',
+        'script',
+        'tag',
+        'timeline',
+        'text',
+        'user',
+        'group',
+        'subscription',
+        'connector',
+        'regulator',
+        'endpoint',
+    ],
+    'sysref': [
+        'queued',
+        'scheduled',
+        'executed',
+        'canceled',
+        'failed',
+        'observed-by',
+        'commented-by',
+        'monitors',
+        'associated-with',
+        'encases',
+        'tagged',
+        'uses',
+        'synchronized-with',
+        'implies',
+        'authorizes',
+        'member-of',
+        'produced',
+    ]
 }
+
+
+facets = [
+    'cases',
+    'contributors',
+    'document.magic',
+    'commented',
+    'document',
+    'sources',
+    'producers',
+    'refcount',
+    'vault-stored',
+    'display',
+    'actions',
+    'endpoints',
+    'latest-internal-observation',
+    'tagged',
+]
+
 quolab_types = set()
 quolab_class_from_type = {}
+
+resolve_override = {
+    "text": "sysfact",
+}
 
 
 def init():
     for class_, types in quolab_classes.items():
         for type_ in types:
-            # XXX: This assertion would be better as a unittest
-            assert type_ not in quolab_types, \
-                "Duplicate entry for {}:  {} vs {}".format(type_, quolab_class_from_type[type_], class_)
+            if type_ in quolab_types:
+                if type_ in resolve_override:
+                    class_ = resolve_override[type_]
+                else:
+                    # XXX: This assertion would be better as a unittest
+                    raise AssertionError("Duplicate entry for {}:  {} vs {}".format(
+                        type_, quolab_class_from_type[type_], class_))
             quolab_types.add(type_)
             quolab_class_from_type[type_] = class_
-init()
+init() # nopep8
 
 
 def sanitize_fieldname(field):
@@ -140,8 +225,6 @@ def as_bool(s):
     return s.lower()[0] in ("t", "y", "e", "1")
 
 
-
-
 @Configuration()
 class QuoLabQueryCommand(GeneratingCommand):
     """
@@ -192,7 +275,7 @@ class QuoLabQueryCommand(GeneratingCommand):
     facets = Option(
         require=False,
         default=None,
-        validate=validators.Set("display", "tagged", "actions", "sources")
+        validate=validators.Set(*facets)
     )
 
     # Always run on the searchhead (not the indexers)
@@ -256,7 +339,7 @@ class QuoLabQueryCommand(GeneratingCommand):
             'content-type': "application/json",
         }
         # XXX: Revise this logic to better handle query_limit that's within a few % of max_batch_size.
-        #   Example:  if limit=501, don't query 3 x 250 records, and then throw away the 249.  Should be able to optimize per-query limit to accomidate.
+        #   Example:  if limit=501, don't query 3 x 250 records, and then throw away the 249.  Should be able to optimize per-query limit to accommodate.
         query["limit"] = query_limit if query_limit < max_batch_size else max_batch_size
         i = http_calls = 0
         while True:
@@ -275,7 +358,7 @@ class QuoLabQueryCommand(GeneratingCommand):
                 self.write_error("QuoLab query failed:  {} ({})", message, status)
                 return
 
-            # If a non-sucess exit code was returned, and the resulting object doesn't have message/status, then just raise an execption.
+            # If a non-success exit code was returned, and the resulting object doesn't have message/status, then just raise an exception.
             response.raise_for_status()
 
             self.logger.debug("Response body:   %s", body)
@@ -297,12 +380,13 @@ class QuoLabQueryCommand(GeneratingCommand):
 
             ellipsis = body.get("ellipsis", None)
             if ellipsis:
-                self.logger.debug("Query next batch.  i=%d, query_limit=%d, limit=%d, ellipsis=%s", i, query_limit, query["limit"], ellipsis)
+                self.logger.debug("Query next batch.  i=%d, query_limit=%d, limit=%d, ellipsis=%s",
+                                  i, query_limit, query["limit"], ellipsis)
                 query["resume"] = ellipsis
             else:
                 break
-        self.logger.info("Query/return efficiency: http_calls=%d, query_limit=%d, per_post_limit=%d", http_calls, query_limit, query["limit"])
-
+        self.logger.info("Query/return efficiency: http_calls=%d, query_limit=%d, per_post_limit=%d",
+                         http_calls, query_limit, query["limit"])
 
     def generate(self):
         # Because the splunklib search interface does a *really* bad job a reporting exceptions / logging stack traces :-(
@@ -365,7 +449,74 @@ def build_searchbnf(stream=sys.stdout):
     >>> quolab_query.build_searchbnf()
     """
     stream.write("[quolab-types]\n")
-    stream.write("syntax = ({})\n".format("|".join(sorted(quolab_types))))
+    types = []
+    # Don't bother showing reference/sysref in the UI docs (to keep the list
+    # from becoming too long and unreadable)
+    for class_ in ["sysfact", "fact", "annotation"]:
+        types.extend(quolab_classes[class_])
+    stream.write("syntax = ({})\n".format("|".join(types)))
+
+    stream.write("[quolab-facets]\n")
+    stream.write("syntax = ({})\n".format("|".join(sorted(facets))))
+
+
+def build_facets(data):
+    """ Data from facets-serves.json
+
+    Data structure:
+    { "services" : [
+        {"(type)": "quolab...ClassName",
+        "id": "<name>"}
+     ] }
+    """
+    deprecated = {"casetree", "cache-id", "indirect"}
+    services = [service["id"] for service in data["services"]
+                if service["id"] not in deprecated]
+    return services
+
+
+def build_types(data):
+    """ Extract datetypes from model-types.json
+    API:    /v1/catalog/model/types
+
+    Data Structure:
+    { "types: {
+        "<class>: [
+            {"type": "<type>"}
+        ]
+    }}
+
+    data = json.load(open("model-types.json"))
+    build_types(data)
+    """
+    deprecated = {"ipynb", "misp-blob", "source", "sink", "task", "sighted-by"}
+    qlc = {}
+    for class_, types in data["types"].items():
+        type_names = [t["type"] for t in types if t["type"] not in deprecated]
+        qlc[class_] = type_names
+    # print(repr(qlc))
+    return qlc
+
+
+def build_from_json(output=sys.stdout):
+    # TODO:  Make list output show up on the following line.   Something like:  replace(": ['", ": [\n    '").  Maybe just use json dump?
+    from pprint import pprint
+    pp_args = {
+        "compact": False
+    }
+    if sys.version_info > (3, 8):
+        pp_args["sort_dicts"] = False
+    data = json.load(open("model-types.json"))
+    qlc = build_types(data)
+    output.write("quolab_classes = ")
+    pprint(qlc, stream=output, **pp_args)
+    output.write("\n\n")
+
+    data = json.load(open("facet-services.json"))
+    facets = build_facets(data)
+    output.write("facets = ")
+    pprint(facets, stream=output, **pp_args)
+    output.write("\n\n")
 
 
 if __name__ == '__main__':
