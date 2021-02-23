@@ -15,11 +15,17 @@
     <input field="username">
         <label>username</label>
         <type>text</type></input>
+    <input field="fetch_count">
+        <label>Fetch_count</label>
+        <type>text</type></input>
+    <input field="timeout">
+        <label>Timeout</label>
+        <type>text</type></input>
     <input field="verify">
         <label>Verify</label>
         <type>text</type></input>
-     <input field="token">
-        <label>API Token for authentication</label>
+     <input field="secret">
+        <label>API Secret for authentication</label>
         <type>text</type>
       </input>
 

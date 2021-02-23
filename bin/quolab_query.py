@@ -158,11 +158,13 @@ class QuoLabQueryCommand(GeneratingCommand):
     """
 
     def __init__(self):
-        # COOKIECUTTER-TODO: initialize these variables as appropriate  (url, username, verify)
+        # COOKIECUTTER-TODO: initialize these variables as appropriate  (url, username, fetch_count, timeout, verify)
         self.api_url = None
         self.api_username = None
+        self.api_fetch_count = None
+        self.api_timeout = None
         self.verify = verify
-        self.api_token = None
+        self.api_secret = None
         # self._cache = {}
         super(QuoLabQueryCommand, self).__init__()
 
@@ -183,12 +185,14 @@ class QuoLabQueryCommand(GeneratingCommand):
 
         self.api_url = api["url"]
         self.api_username = api["username"]
+        self.api_fetch_count = api["fetch_count"]
+        self.api_timeout = api["timeout"]
         self.verify = as_bool(api["verify"])
         self.logger.debug("Entity api: %r", self.api_url)
-        self.api_token = api["token"]
-        if not self.api_token:
-            self.error_exit("Check the configuration.  Unable to fetch data from {} without token.".format(self.api_url),
-                            "Missing token.  Did you run setup?")
+        self.api_secret = api["secret"]
+        if not self.api_secret:
+            self.error_exit("Check the configuration.  Unable to fetch data from {} without secret.".format(self.api_url),
+                            "Missing secret.  Did you run setup?")
 
     def _query_external_api(self, query_string):
         # COOKIECUTTER-TODO: Implement remote QuoLab API query here
@@ -200,7 +204,7 @@ class QuoLabQueryCommand(GeneratingCommand):
         }
         headers = {
             'content-type': "application/json",
-            'x-api-token': self.api_token,
+            'x-api-secret': self.api_secret,
             'cache-control': "no-cache"
         }
         try:
