@@ -34,7 +34,7 @@ from splunk import AuthorizationFailed
 from splunk.persistconn.application import PersistentServerConnectionApplication
 
 
-class Quolab_serversSettingsHandler(PersistentServerConnectionApplication):
+class QuolabServersSettingsHandler(PersistentServerConnectionApplication):
 
     def __init__(self, command_line, command_arg):
         del command_line, command_arg

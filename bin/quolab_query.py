@@ -284,14 +284,13 @@ class QuoLabQueryCommand(GeneratingCommand):
     # Don't allow this to run in preview mode to limit API hits
     run_in_preview = False
 
-
     def __init__(self):
-        # COOKIECUTTER-TODO: initialize these variables as appropriate  (url,username,verify)
+        # COOKIECUTTER-TODO: initialize these variables as appropriate  (url, username, verify)
         self.api_url = None
         self.api_username = None
         self.api_token = None
         self.session = requests.Session()
-        self.verify = False
+        self.verify = True
 
         # self._cache = {}
         super(QuoLabQueryCommand, self).__init__()
@@ -324,8 +323,8 @@ class QuoLabQueryCommand(GeneratingCommand):
         self.logger.debug("Entity api: %r", self.api_url)
         self.api_token = api["token"]
         if not self.api_token:
-            self.error_exit("Check the configuration. Unable to fetch data from {} without token.".format(self.api_url),
-                            "Missing 'token'.  Did you run setup?")
+            self.error_exit("Check the configuration.  Unable to fetch data from {} without token.".format(self.api_url),
+                            "Missing token.  Did you run setup?")
 
     def _query_catalog(self, query, query_limit, max_batch_size=250):
         """ Handle the query to QuoLab API that drives this SPL command

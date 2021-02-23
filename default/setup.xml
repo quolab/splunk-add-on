@@ -1,4 +1,5 @@
 <setup>
+    <!-- Setup XML for configuring QuoLab authentication-->
 
   <block title="Configure This App">
     <text>Setup QuoLab API endpoint</text>

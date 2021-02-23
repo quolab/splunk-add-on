@@ -14,9 +14,8 @@ mkdir -p "$BUILD"
 mkdir -p "$BUILD/lib"
 
 echo "Building QuoLab add-on for Splunk ${VER}"
-### DEVELOPER INPUT NEEDED.  You must add all the relevant files/directories here:
-# appserver lookups
-cp -a bin default metadata static README.md README "$BUILD"
+# COOKIECUTTER-TODO: Ensure correct folder list for builds:  consider README, appserver, lookups
+cp -a README.md bin default metadata static README "$BUILD"
 python -m pip install --isolated --disable-pip-version-check -r requirements.txt -t "$BUILD/lib"
 find "$BUILD/lib" "$BUILD/bin" \( -name '*.py[co]' -o -name '__pycache__' -o -name '*.log*' \) -delete
 rm -rf $BUILD/lib/bin $BUILD/lib/*.{dist,egg}-info
