@@ -22,7 +22,7 @@ lib_dir = os.path.join(os.path.dirname(__file__), "..", "lib")
 sys.path.insert(0, lib_dir)
 del lib_dir, os, sys
 APP_NAME = "TA-quolab"
-SECRET_KEY = ":quolab_servers_token__{}:"
+SECRET_KEY = ":quolab_servers_secret__{}:"
 
 
 class ConfigApp(admin.MConfigHandler):
@@ -37,14 +37,14 @@ class ConfigApp(admin.MConfigHandler):
         Set up supported arguments
         '''
         if self.requestedAction == admin.ACTION_EDIT:
-            for arg in ['url', 'username', 'verify', 'token']:
+            for arg in ['url', 'username', 'fetch_count', 'timeout', 'verify', 'secret']:
                 self.supportedArgs.addReqArg(arg)
 
-    def _fetch_token(self, stanza):
+    def _fetch_secret(self, stanza):
         import splunk
         import requests
         import json
-        url = '{}/services/quolab_servers_fetch_token/{}'.format(
+        url = '{}/services/quolab_servers_fetch_secret/{}'.format(
             splunk.getLocalServerInfo(), stanza)
         try:
             r = requests.post(url, verify=False,
@@ -54,14 +54,14 @@ class ConfigApp(admin.MConfigHandler):
                 d = json.loads(content)
             except ValueError:
                 raise ValueError("Payload is not JSON:  %r" % content)
-            return d.get("token", "")
+            return d.get("secret", "")
         except Exception as e:
             raise
             # raise admin.ServiceUnavailableException("{}".format(e))
 
-    def _store_token(self, stanza, secret):
+    def _store_secret(self, stanza, secret):
         '''
-        Store the TOKEN in the storage/password endpoint to prevent unauthorized access via
+        Store the SECRET in the storage/password endpoint to prevent unauthorized access via
         the built-in configuration and properties endpoints as well as provide on-disk encryption.
         '''
         password_name = SECRET_KEY.format(stanza)
@@ -89,7 +89,7 @@ class ConfigApp(admin.MConfigHandler):
                         val = ''
                     confInfo[stanza].append(key, val)
                     # Fetch encrypted password from storage/passwords
-                    confInfo[stanza].append("token", self._fetch_token(stanza))
+                    confInfo[stanza].append("secret", self._fetch_secret(stanza))
 
     def handleEdit(self, confInfo):
         '''
@@ -101,12 +101,12 @@ class ConfigApp(admin.MConfigHandler):
         if self.callerArgs.data['url'][0] in [None, '']:
             self.callerArgs.data['url'][0] = ''
         # What's the stanza name here?
-        if "token" in self.callerArgs.data:
-            self._store_token(stanza, self.callerArgs.data["token"][0])
-            # Safety/upgrade scenario.  Mask out "token" if stored directly in quolab_servers.conf as this
-            # value will always be accessible to the user via /services/properties/quolab_servers/<stanza>/token
+        if "secret" in self.callerArgs.data:
+            self._store_secret(stanza, self.callerArgs.data["secret"][0])
+            # Safety/upgrade scenario.  Mask out "secret" if stored directly in quolab_servers.conf as this
+            # value will always be accessible to the user via /services/properties/quolab_servers/<stanza>/secret
             # with the 'rest_properties_get' capability enabled (which is by default for the 'user' role)
-            self.callerArgs.data["token"] = ["HIDDEN"]
+            self.callerArgs.data["secret"] = ["HIDDEN"]
         self.writeConf('quolab_servers', stanza, self.callerArgs.data)
 
 

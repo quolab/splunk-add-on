@@ -1,6 +1,6 @@
 """
 This REST handler is a password fetching workaround for the /quolab_servers endpoint.  This endpoint simply
-returns the token (password) for non-admin users.
+returns the secret (password) for non-admin users.
 
 Starting in Splunk 6.5 reading from /storage/passsword requires the "list_storage_passwords"
 capability, however doing so grants the rights to read ANY password for any app.  Prior to 6.5,
@@ -29,7 +29,7 @@ from splunk import AuthorizationFailed
 import splunk.entity as en
 import json
 APP_NAME = "TA-quolab"
-SECRET_KEY = ":quolab_servers_token__{}:"
+SECRET_KEY = ":quolab_servers_secret__{}:"
 
 
 class QuolabServersSettingsHandler(PersistentServerConnectionApplication):
@@ -46,13 +46,13 @@ class QuolabServersSettingsHandler(PersistentServerConnectionApplication):
             d[field] = e[field]
         return d
 
-    def _fetch_token(self, stanza, sessionKey, decrypt=True):
+    def _fetch_secret(self, stanza, sessionKey, decrypt=True):
         try:
             e = en.getEntity(["storage", "passwords"], SECRET_KEY.format(stanza), namespace=APP_NAME,
                              owner="-", sessionKey=sessionKey)
         except AuthorizationFailed:
             # XXX:  Is there a more appropriate exception to raise?
-            raise ValueError("Authentication failed when fetching token.   SessionContext=%s" %
+            raise ValueError("Authentication failed when fetching secret.   SessionContext=%s" %
                              self._get_session_context(sessionKey))
         if e:
             if decrypt:
@@ -74,7 +74,7 @@ class QuolabServersSettingsHandler(PersistentServerConnectionApplication):
         response["stanza"] = stanza
         sessionKey = request.get("system_authtoken", request["session"]["authtoken"])
         try:
-            response["token"] = self._fetch_token(stanza, sessionKey, do_decrypt)
+            response["secret"] = self._fetch_secret(stanza, sessionKey, do_decrypt)
             status = 200
         except Exception as e:
             response["error"] = "{}".format(e)

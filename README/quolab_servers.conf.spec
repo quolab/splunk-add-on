@@ -1,7 +1,9 @@
 # COOKIECUTTER-TODO: Define parameters for conf documentation purposes
 [<quolab_server>]
-# Note that 'token' is stored in passwords.conf
+# Note that 'secret' is stored in passwords.conf
+secret = <str>
 url = <url>
-token = <str>
-username = <user>
+username = <str>
+fetch_count = <int>
+timeout = <int>
 verify = <bool>
