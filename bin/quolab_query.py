@@ -33,7 +33,7 @@ log.setLevel(logging.DEBUG)
 
 
 def sanitize_fieldname(field):
-    clean = re.sub(r'[^A-Za-z0-9_.{}\[\]]', "_", field)
+    clean = re.sub(r'[^A-Za-z0-9_.{}\[\]-]', "_", field)
     # Remove leading/trailing underscores
     clean = clean.strip("_")
     return clean
@@ -95,6 +95,10 @@ def ensure_fields(results):
     return output
 
 
+def as_bool(s):
+    return s.lower()[0] in ("t", "y", "e", "1")
+
+
 @Configuration()
 class QuoLabQueryCommand(GeneratingCommand):
     """
@@ -154,15 +158,15 @@ class QuoLabQueryCommand(GeneratingCommand):
 
     Enable debug logging:
 
-        | quolabquery logging_level=DEBUG ...
+         | quolabquery logging_level=DEBUG ...
 
     """
 
     def __init__(self):
-        # COOKIECUTTER-TODO: initialize these variables as appropriate  (url,username,verify)
+        # COOKIECUTTER-TODO: initialize these variables as appropriate  (url, username, verify)
         self.api_url = None
         self.api_username = None
-        self.api_verify = None
+        self.verify = verify
         self.api_token = None
         # self._cache = {}
         super(QuoLabQueryCommand, self).__init__()
@@ -180,16 +184,16 @@ class QuoLabQueryCommand(GeneratingCommand):
             self.error_exit("No known server named '{}', check quolab_servers.conf)".format(self.server),
                             "Check value provided for 'server=' option.")
 
-        # COOKIECUTTER-TODO: Handle all varaibles here
+        # COOKIECUTTER-TODO: Handle all variables here
 
         self.api_url = api["url"]
         self.api_username = api["username"]
-        self.verify = api["verify"]
-        self.logger.debug("Entity api: %r", api["url"])
+        self.verify = as_bool(api["verify"])
+        self.logger.debug("Entity api: %r", self.api_url)
         self.api_token = api["token"]
         if not self.api_token:
-            self.error_exit("Missing api_token.  Did you run setup?",
-                            "Check the configuration.  Unable to fetch data with token.")
+            self.error_exit("Check the configuration.  Unable to fetch data from {} without token.".format(self.api_url),
+                            "Missing token.  Did you run setup?")
 
     def _query_external_api(self, query_string):
         # COOKIECUTTER-TODO: Implement remote QuoLab API query here

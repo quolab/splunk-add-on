@@ -4,6 +4,6 @@ six==1.15.0
 splunk-sdk==1.6.14
 requests==2.25.1
 
-# COOKIECUTTER-TODO:  DEVELOPER INPUT NEEDED:   List the additional python libraries that you need here:
+# COOKIECUTTER-TODO:  DEVELOPER INPUT NEEDED:   List the required Python libraries
 #pytz>=2020.5
 #python-dateutil==2.8.1

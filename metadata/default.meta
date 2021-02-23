@@ -25,6 +25,9 @@ export = system
 [props]
 export = system
 
+[searchbnf]
+export = system
+
 [tags]
 export = system
 

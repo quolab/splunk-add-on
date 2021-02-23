@@ -1,3 +1,4 @@
+
 # TA-quolab
 *QuoLab add-on for Splunk*
 
@@ -6,7 +7,7 @@
 
 | Sourcetype | Type | Purpose |
 | ---------- | ---- | ------- |
-| command:quolabquery | monitor | Internal logs and stats related to QuoLab data ingestion. |
+| command:quolabquery | monitor | Internal logs and stats related to custom QuoLab SPL command. |
 
 
 ## Troubleshooting
@@ -35,14 +36,14 @@ Information available via various REST endpoints:
 | `/services/quolab_servers_fetch_token` | `quolab_servers_rh_settings.py` | Show unencrypted `token` and is restricted via capabilities.  Uses the scripted rest handler with `passSystemAuth` enabled so that the necessary secret can be obtained without being an admin. |
 
 
-To setup a new 'test' configuratation stanza from the CLI, run:
+To setup a new 'test' configuration stanza from the CLI, run:
 
 ```bash
 curl -ks -u admin:changeme -X POST \
     https://127.0.0.1:8089/servicesNS/nobody/TA-quolab/quolab_servers/quolab_serversendpoint/test \
     -d url=https://server.example/path/v1/api\
     -d username=admin\
-    -d verify=Default for Verify\
+    -d verify=true\
     -d token=SECRET-VALUE
 ```
 
@@ -55,7 +56,7 @@ If you would like to develop or build this TA from source, see the [development]
 
 ### Rest endpoint
 
-**Show errors thrown in Admin Manager extention:**
+**Show errors thrown in Admin Manager extension:**
 ```
 index=_internal sourcetype=splunkd ERROR AdminManagerExternal TA-quolab quolab_servers_python_handler.py | eval _raw=replace(_raw, "\\\n", urldecode("%0a"))
 ```
@@ -75,5 +76,5 @@ index=_internal sourcetype=splunkd SetupAdminHandler quolab_servers/quolab_serve
  * **API Docs**:  https://....
 
 
-This addon was built from the [Kintyre rest addon](https://github.com/Kintyre/cypress_ta_rest) [cookiecutter](https://github.com/audreyr/cookiecutter) project.
+This addon was built from the [Kintyre spl addon](https://github.com/Kintyre/cypress_ta_spl) (version 0.2.2) [cookiecutter](https://github.com/audreyr/cookiecutter) project.
 
