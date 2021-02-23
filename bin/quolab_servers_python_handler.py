@@ -16,7 +16,8 @@ import splunk.rest as rest
 
 
 # So that the correct version of requests gets loaded
-import os, sys
+import os
+import sys
 lib_dir = os.path.join(os.path.dirname(__file__), "..", "lib")
 sys.path.insert(0, lib_dir)
 del lib_dir, os, sys
@@ -36,15 +37,18 @@ class ConfigApp(admin.MConfigHandler):
         Set up supported arguments
         '''
         if self.requestedAction == admin.ACTION_EDIT:
-            for arg in [ 'url', 'username', 'verify', 'token' ]:
+            for arg in ['url', 'username', 'verify', 'token']:
                 self.supportedArgs.addReqArg(arg)
 
     def _fetch_token(self, stanza):
-        import splunk, requests, json
-        url = '{}/services/quolab_servers_fetch_token/{}'.format(splunk.getLocalServerInfo(), stanza)
+        import splunk
+        import requests
+        import json
+        url = '{}/services/quolab_servers_fetch_token/{}'.format(
+            splunk.getLocalServerInfo(), stanza)
         try:
             r = requests.post(url, verify=False,
-            headers={'Authorization': 'Splunk ' + self.getSessionKey(), "Decrypt":"1"})
+                              headers={'Authorization': 'Splunk ' + self.getSessionKey(), "Decrypt": "1"})
             content = r.text
             try:
                 d = json.loads(content)
@@ -62,7 +66,8 @@ class ConfigApp(admin.MConfigHandler):
         '''
         password_name = SECRET_KEY.format(stanza)
         ### self.logger.info(" Stanza:  %s", stanza)
-        url = en.buildEndpoint("storage/passwords", password_name, namespace=APP_NAME, owner="nobody")
+        url = en.buildEndpoint("storage/passwords", password_name,
+                               namespace=APP_NAME, owner="nobody")
         if rest.checkResourceExists(url, sessionKey=self.getSessionKey()):
             # Update existing password
             rest.simpleRequest(url, postargs={"password": secret},
@@ -101,7 +106,7 @@ class ConfigApp(admin.MConfigHandler):
             # Safety/upgrade scenario.  Mask out "token" if stored directly in quolab_servers.conf as this
             # value will always be accessible to the user via /services/properties/quolab_servers/<stanza>/token
             # with the 'rest_properties_get' capability enabled (which is by default for the 'user' role)
-            self.callerArgs.data["token"] = [ "HIDDEN" ]
+            self.callerArgs.data["token"] = ["HIDDEN"]
         self.writeConf('quolab_servers', stanza, self.callerArgs.data)
 
 

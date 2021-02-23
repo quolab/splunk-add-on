@@ -11,14 +11,13 @@ import re
 import json
 import time
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))  # nopep8
 
 import six
 import requests
 from requests.auth import HTTPBasicAuth
 from splunklib.client import Entity
 from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration, Option, validators
-
 
 
 """ http debug loggig
@@ -28,8 +27,6 @@ from http.client import HTTPConnection  # py3
 log = logging.getLogger('urllib3')
 log.setLevel(logging.DEBUG)
 """
-
-
 
 
 def sanitize_fieldname(field):
@@ -80,8 +77,6 @@ def splunk_dot_notation(obj):
     return d
 
 
-
-
 def ensure_fields(results):
     """ Ensure that the first result has a placeholder for *ALL* the fields """
     field_set = set()
@@ -127,7 +122,7 @@ class QuoLabQueryCommand(GeneratingCommand):
     field_int = Option(
         require=False,
         default=32,
-        validate=validators.Integer(1,128))
+        validate=validators.Integer(1, 128))
 
     field_bool = Option(
         require=False,
@@ -201,7 +196,7 @@ class QuoLabQueryCommand(GeneratingCommand):
         Returns (error, payload)
         """
         query_params = {
-            "search" : query_string
+            "search": query_string
         }
         headers = {
             'content-type': "application/json",
@@ -220,16 +215,11 @@ class QuoLabQueryCommand(GeneratingCommand):
             result = []
         return (None, result)
 
-
-
     def generate(self):
         for i in range(100):
-            yield { "_raw": "Sample event {}".format(i),
-                    self.output: "This is the field with a new value!",
-                    "_time" : time.time()}
-
-
-
+            yield {"_raw": "Sample event {}".format(i),
+                   self.output: "This is the field with a new value!",
+                   "_time": time.time()}
 
 
 if __name__ == '__main__':

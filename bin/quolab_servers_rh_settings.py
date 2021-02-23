@@ -24,14 +24,12 @@ Docs:
 
 """
 
+from splunk.persistconn.application import PersistentServerConnectionApplication
+from splunk import AuthorizationFailed
+import splunk.entity as en
+import json
 APP_NAME = "TA-quolab"
 SECRET_KEY = ":quolab_servers_token__{}:"
-
-import json
-
-import splunk.entity as en
-from splunk import AuthorizationFailed
-from splunk.persistconn.application import PersistentServerConnectionApplication
 
 
 class QuolabServersSettingsHandler(PersistentServerConnectionApplication):
@@ -82,6 +80,6 @@ class QuolabServersSettingsHandler(PersistentServerConnectionApplication):
             response["error"] = "{}".format(e)
             status = 500
         response["decrypt"] = do_decrypt
-        return {'payload' : response,
+        return {'payload': response,
                 'status': status        # HTTP status code
-        }
+                }

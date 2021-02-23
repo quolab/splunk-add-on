@@ -2,6 +2,7 @@ pip>=20
 bump2version
 kintyre-splunk-conf
 pre-commit
+autopep8
 
 
 # Core requirements needed at run-time.
