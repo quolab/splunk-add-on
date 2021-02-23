@@ -19,5 +19,6 @@
     "json_output": true,
     "on_splunkbase": true,
     "_extensions": "['jinja2.ext.do']",
-    "_template_version": "0.2.2"
+    "_template": "git+https://github.com/Kintyre/cypress_ta_spl",
+    "_template_version": "0.3.0"
 }

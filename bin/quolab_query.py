@@ -11,14 +11,13 @@ import re
 import json
 import time
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))  # nopep8
 
 import six
 import requests
 from requests.auth import HTTPBasicAuth
 from splunklib.client import Entity
 from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration, Option, validators
-
 
 
 """ http debug logging
@@ -153,7 +152,9 @@ def init():
                         type_, quolab_class_from_type[type_], class_))
             quolab_types.add(type_)
             quolab_class_from_type[type_] = class_
-init() # nopep8
+
+
+init()
 
 
 def sanitize_fieldname(field):
@@ -342,7 +343,8 @@ class QuoLabQueryCommand(GeneratingCommand):
         query["limit"] = query_limit if query_limit < max_batch_size else max_batch_size
         i = http_calls = 0
         while True:
-            response = session.request("POST", url,
+            response = session.request(
+                "POST", url,
                 data=json.dumps(query),
                 headers=headers,
                 auth=HTTPBasicAuth(self.api_username, self.api_token),
@@ -353,7 +355,8 @@ class QuoLabQueryCommand(GeneratingCommand):
             if "status" in body or "message" in body:
                 status = body.get("status", response.status_code)
                 message = body.get("message", "")
-                self.logger.error("QuoLab API returned unexpected status response from query.  status=%r message=%r query=%r", status, message, query)
+                self.logger.error("QuoLab API returned unexpected status response from query.  "
+                                  "status=%r message=%r query=%r", status, message, query)
                 self.write_error("QuoLab query failed:  {} ({})", message, status)
                 return
 
@@ -369,7 +372,7 @@ class QuoLabQueryCommand(GeneratingCommand):
                 # Q:  Are there ever fields that should be returned as _time instead of system clock time?
                 result["_time"] = time.time()
                 yield result
-                i+= 1
+                i += 1
                 if i >= query_limit:
                     break
 

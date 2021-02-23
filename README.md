@@ -99,5 +99,5 @@ This SPL command uses the following API calls:
  * `v1/catalog/query` - the "swiss-army-knife" of quolab data querying. Objects can be queried from QuoLab's graph data model, and aggregated, and/or enriched using facets as necessary.
 
 
-This addon was built from the [Kintyre spl addon](https://github.com/Kintyre/cypress_ta_spl) (version 0.2.2) [cookiecutter](https://github.com/audreyr/cookiecutter) project.
+This addon was built from the [Kintyre spl addon](https://github.com/Kintyre/cypress_ta_spl) (version 0.3.0) [cookiecutter](https://github.com/audreyr/cookiecutter) project.
 
