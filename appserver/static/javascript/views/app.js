@@ -99,7 +99,7 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
             const { entry } = conf_entry_data;
 
             const sanitized_entries = entry.map((item) => {
-                 item.content.token = "[masked]";
+                 item.content.secret = "[masked]";
                  return item;
              });
 
