@@ -272,11 +272,10 @@ class QuoLabQueryCommand(GeneratingCommand):
         validate=validators.Set("ascending", "descending")
     )
 
-    # XXX:  Figure out a way to accept multiple values here:  comma sep?
     facets = Option(
         require=False,
         default=None,
-        validate=validators.Set(*facets)
+        validate=validators.List(validator=validators.Set(*facets))
     )
 
     # Always run on the searchhead (not the indexers)
@@ -440,7 +439,9 @@ class QuoLabQueryCommand(GeneratingCommand):
             query["order"] = ["id", self.order]
 
         if self.facets:
-            query.setdefault("facets", {})[self.facets] = 1
+            query_facets = query.setdefault("facets", {})
+            for facet in self.facets:
+                query_facets[facet] = 1
 
         self.write_info("Query sent to {} server: {}", self.server, json.dumps(query))
         results = self._query_catalog(query, self.limit)
