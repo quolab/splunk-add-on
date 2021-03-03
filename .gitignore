@@ -9,6 +9,7 @@
 
 # Build artifacts
 build/
+build.cache/
 dist/
 lib/
 .latest_release

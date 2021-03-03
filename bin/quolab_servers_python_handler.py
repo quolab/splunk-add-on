@@ -47,8 +47,9 @@ class ConfigApp(admin.MConfigHandler):
         url = '{}/services/quolab_servers_fetch_secret/{}'.format(
             splunk.getLocalServerInfo(), stanza)
         try:
-            r = requests.post(url, verify=False,
-                              headers={'Authorization': 'Splunk ' + self.getSessionKey(), "Decrypt": "1"})
+            r = requests.post(url, verify=False, headers={
+                'Authorization': 'Splunk ' + self.getSessionKey(),
+                "Decrypt": "1"})
             content = r.text
             try:
                 d = json.loads(content)

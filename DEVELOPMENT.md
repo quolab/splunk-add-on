@@ -7,11 +7,11 @@ You can build the QuoLab add on for Splunk using the following steps:
 
 First install:
 
-    ./build.sh && $SPLUNK_HOME/bin/splunk install app $(<.latest_release)
+    ./build.py && $SPLUNK_HOME/bin/splunk install app $(<.latest_release)
 
 To quickly reload the app on a local Splunk instance during development:
 
-    ./build.sh && $SPLUNK_HOME/bin/splunk install app $(<.latest_release) -update 1
+    ./build.py && $SPLUNK_HOME/bin/splunk install app $(<.latest_release) -update 1
 
 
 
@@ -34,8 +34,6 @@ Setup a local virtual environment in the top level of the package to install the
     python -m virtualenv venv
     . venv/bin/activate
     python -m pip install -U -r requirements-dev.txt
-
-
 
 
 ## Tools
