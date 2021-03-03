@@ -20,7 +20,7 @@ from splunklib.client import Entity
 from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration, Option, validators
 
 
-""" http debug loggig
+""" http debug logging
 import logging
 from http.client import HTTPConnection  # py3
 

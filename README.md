@@ -29,7 +29,7 @@ Information available via various REST endpoints:
 
 | REST endpoint | Script | Information shown |
 | ------------- | ------ | ----------------- |
-| `/services/quolab_servers/quolab_serversendpoint/<name>` | `quolab_servers_python_handler.py` | Shows unencrypted 'secret'; restricted via capabilities.  Only `read_quolab_servers_config` can read, and `edit_quolab_servers_config` can write.|
+| `/servicesNS/-/-/quolab_servers/quolab_serversendpoint/<name>` | `quolab_servers_python_handler.py` | Read/write properties and unencrypted 'secret'; restricted via capabilities.  Only `read_quolab_servers_config` can read, and `edit_quolab_servers_config` can write.|
 | `/servicesNS/-/-/configs/conf-quolab_servers` | N/A (native) | Shows 'secret' as "HIDDEN" |
 | `/servicesNS/-/-/properties/quolab_servers/<name>/secret` | N/A (native) | Shows 'value' as "HIDDEN" |
 | `/servicesNS/-/-/storage/passwords` | N/A (native) | Will show `password` in encrypted form (as stored in `passwords.conf`) and `clear_password` (unencrypted).  Access is restricted to users with the `list_storage_passwords` capability. |
@@ -78,5 +78,5 @@ index=_internal sourcetype=splunkd SetupAdminHandler quolab_servers/quolab_serve
  * **API Docs**:  https://....
 
 
-This addon was built from the [Kintyre spl addon](https://github.com/Kintyre/cypress_ta_spl) (version 0.3.0) [cookiecutter](https://github.com/audreyr/cookiecutter) project.
+This addon was built from the [Kintyre spl addon](https://github.com/Kintyre/cypress_ta_spl) (version 0.4.0) [cookiecutter](https://github.com/audreyr/cookiecutter) project.
 

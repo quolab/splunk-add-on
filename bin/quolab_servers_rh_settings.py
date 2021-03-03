@@ -81,5 +81,4 @@ class QuolabServersSettingsHandler(PersistentServerConnectionApplication):
             status = 500
         response["decrypt"] = do_decrypt
         return {'payload': response,
-                'status': status        # HTTP status code
-                }
+                'status': status}        # HTTP status code
