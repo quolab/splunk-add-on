@@ -241,6 +241,8 @@ class QuoLabQueryCommand(GeneratingCommand):
     ##Example
     """
 
+    order_param_regex = r'^(?P<order>[+-])?(?P<field>(?:[a-z_-]+\.)*[a-z_-]+)$'
+
     server = Option(
         require=False,
         default="quolab",
@@ -264,12 +266,11 @@ class QuoLabQueryCommand(GeneratingCommand):
         default=100,
         validate=validators.Integer(1, 100000)
     )
-
     order = Option(
         require=False,
-        default="ascending",
-        # XXX: Find out what the API values are legit:
-        validate=validators.Set("ascending", "descending")
+        default=[],
+        validate=validators.List(validators.Match(name="[+-]<field>",
+                                                  pattern=order_param_regex))
     )
 
     facets = Option(
@@ -328,6 +329,38 @@ class QuoLabQueryCommand(GeneratingCommand):
         if not self.api_secret:
             self.error_exit("Check the configuration.  Unable to fetch data from {} without secret.".format(self.api_url),
                             "Missing secret.  Did you run setup?")
+        # Check to see if an unused arguments remain after argument parsing
+        if self.fieldnames:
+            self.write_error("The following arguments to quolabquery are "
+                             "unknown:  {!r}  Please check the syntax.", self.fieldnames)
+            sys.exit(1)
+
+
+    @classmethod
+    def _order_to_dict(cls, order_option, query):
+        """ Build the order portion of a query document given a dot-notation
+        field hierarchy.  Here are a few examples:
+
+        Order expression            JSON order syntax
+            id                      {"order": [["id", "ascending"]]}
+            +document.description   {"documents": {"order": [["description", "ascending"]]}}
+            -document.match.type    {"documents": {"order": [["match.type", "descending"]]}}
+        """
+        # Note:  No test for re.match() as argument validation already occurred
+        match = re.match(cls.order_param_regex, order_option)
+        order = "descending" if match.group("order") == "-" else "ascending"
+        field = match.group("field").split(".")
+        if len(field) > 1 and field[0] not in ("document",):
+            raise ValueError("Sorting fields under '{}' is not supported.  "
+                             "Top-level and fields under document can be sorted."
+                             .format(field[0]))
+        if len(field) > 1:
+            # 'document' becomes 'documents' for projection/sorting purposes
+            doc = query.setdefault(field.pop(0) + "s", {})
+        else:
+            doc = query
+        doc = doc.setdefault("order", [])
+        doc.append([".".join(field), order])
 
     def _query_catalog(self, query, query_limit, max_batch_size=250):
         """ Handle the query to QuoLab API that drives this SPL command
@@ -434,9 +467,14 @@ class QuoLabQueryCommand(GeneratingCommand):
             if self.value:
                 query["query"]["id"] = self.value
 
-        if not "order" in query:
-            # Q: Support ordering by different fields/keys?  Or require full query syntax for that?
-            query["order"] = ["id", self.order]
+        for order in self.order:
+            try:
+                self._order_to_dict(order, query)
+            except ValueError as e:
+                # Abort with error to user
+                self.write_error("Unable to order results based on '{}' "
+                                 "because: {}", order, e)
+                break
 
         if self.facets:
             query_facets = query.setdefault("facets", {})
