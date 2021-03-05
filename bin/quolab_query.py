@@ -234,7 +234,7 @@ class QuoLabQueryCommand(GeneratingCommand):
     .. code-block::
         quolab_query type=X value
         quolab_query type=ip-address value=1.2.3.4
-        quolab_query type=ip-address 1.2.3.4d
+        quolab_query type=ip-address 1.2.3.4
 
     ##Description
 
@@ -286,7 +286,6 @@ class QuoLabQueryCommand(GeneratingCommand):
     run_in_preview = False
 
     def __init__(self):
-        # COOKIECUTTER-TODO: initialize these variables as appropriate  (url, username, fetch_count, timeout, verify)
         self.session = requests.Session()
         self.api_url = None
         self.api_username = None
@@ -294,7 +293,6 @@ class QuoLabQueryCommand(GeneratingCommand):
         self.api_fetch_count = None
         self.api_timeout = None
         self.api_secret = None
-        # self._cache = {}
         super(QuoLabQueryCommand, self).__init__()
 
     def prepare(self):
@@ -327,7 +325,8 @@ class QuoLabQueryCommand(GeneratingCommand):
         self.logger.debug("Entity api: %r", self.api_url)
         self.api_secret = api["secret"]
         if not self.api_secret:
-            self.error_exit("Check the configuration.  Unable to fetch data from {} without secret.".format(self.api_url),
+            self.error_exit("Check the configuration.  Unable to fetch data "
+                            "from {} without secret.".format(self.api_url),
                             "Missing secret.  Did you run setup?")
         # Check to see if an unused arguments remain after argument parsing
         if self.fieldnames:
@@ -378,6 +377,7 @@ class QuoLabQueryCommand(GeneratingCommand):
         query["limit"] = query_limit if query_limit < max_batch_size else max_batch_size
         i = http_calls = 0
         while True:
+            self.logger.debug("Sending query to API:  %r", query)
             response = session.request(
                 "POST", url,
                 data=json.dumps(query),
@@ -386,17 +386,24 @@ class QuoLabQueryCommand(GeneratingCommand):
                 verify=self.verify)
             http_calls += 1
 
-            body = response.json()
-            if "status" in body or "message" in body:
-                status = body.get("status", response.status_code)
-                message = body.get("message", "")
-                self.logger.error("QuoLab API returned unexpected status response from query.  "
-                                  "status=%r message=%r query=%r", status, message, query)
-                self.write_error("QuoLab query failed:  {} ({})", message, status)
-                return
+
+            if response.status_code >= 400 and response.status_code < 500:
+                body = response.json()
+                if "status" in body or "message" in body:
+                    status = body.get("status", response.status_code)
+                    message = body.get("message", "")
+                    self.logger.error("QuoLab API returned unexpected status response from query.  "
+                                    "status=%r message=%r query=%r", status, message, query)
+                    self.write_error("QuoLab query failed:  {} ({})", message, status)
+                    return
 
             # If a non-success exit code was returned, and the resulting object doesn't have message/status, then just raise an exception.
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+                body = response.json()
+            except Exception as e:
+                self.logger.debug("Body response for %s:   %s", e, response.text)
+                raise
 
             self.logger.debug("Response body:   %s", body)
 
@@ -429,8 +436,11 @@ class QuoLabQueryCommand(GeneratingCommand):
         # Because the splunklib search interface does a *really* bad job a reporting exceptions / logging stack traces :-(
         try:
             return self._generate()
-        except Exception:
-            self.logger.exception("Unhandled top-level exception")
+        except Exception as e:
+            self.logger.exception("Unhandled top-level exception.  To enable "
+                                  "additional logging, re-run the same command "
+                                  "with 'logging_level=DEBUG'.")
+            self.write_error("Internal error:   {}  See internal logs for additional details.", e)
             sys.exit(1)
 
     def _generate(self):
