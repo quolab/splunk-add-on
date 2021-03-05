@@ -12,8 +12,8 @@ build/
 build.cache/
 dist/
 lib/
-.latest_release
-
+.release_path
+.release_name
 
 # IDE / Editors
 .idea
