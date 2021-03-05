@@ -319,8 +319,8 @@ class QuoLabQueryCommand(GeneratingCommand):
 
         self.api_url = api["url"]
         self.api_username = api["username"]
-        self.api_fetch_count = api["fetch_count"]
-        self.api_timeout = api["timeout"]
+        self.api_fetch_count = int(api["fetch_count"])
+        self.api_timeout = int(api["timeout"])
         self.verify = as_bool(api["verify"])
         self.logger.debug("Entity api: %r", self.api_url)
         self.api_secret = api["secret"]
@@ -333,7 +333,6 @@ class QuoLabQueryCommand(GeneratingCommand):
             self.write_error("The following arguments to quolabquery are "
                              "unknown:  {!r}  Please check the syntax.", self.fieldnames)
             sys.exit(1)
-
 
     @classmethod
     def _order_to_dict(cls, order_option, query):
@@ -361,12 +360,20 @@ class QuoLabQueryCommand(GeneratingCommand):
         doc = doc.setdefault("order", [])
         doc.append([".".join(field), order])
 
-    def _query_catalog(self, query, query_limit, max_batch_size=250):
+    def _query_catalog(self, query, query_limit):
         """ Handle the query to QuoLab API that drives this SPL command
         Returns [results]
         """
+        def monotonic():
+            # PY3:  Switch to time.monotonic()
+            return time.time()
+
         # CATALOG QUERY
         session = self.session
+
+        start = monotonic()
+        # Allow total run time to be 10x the individual query limit
+        expire = start + (self.api_timeout * 10)
 
         url = "{}/v1/catalog/query".format(self.api_url)
         headers = {
@@ -374,7 +381,9 @@ class QuoLabQueryCommand(GeneratingCommand):
         }
         # XXX: Revise this logic to better handle query_limit that's within a few % of max_batch_size.
         #   Example:  if limit=501, don't query 3 x 250 records, and then throw away the 249.  Should be able to optimize per-query limit to accommodate.
-        query["limit"] = query_limit if query_limit < max_batch_size else max_batch_size
+        query["limit"] = query_limit if query_limit < self.api_fetch_count else self.api_fetch_count
+        # Q: What do query results look where timeout has been exceeded?  Any special handling required?
+        query.setdefault("hints", {})["timeout"] = self.api_timeout
         i = http_calls = 0
         while True:
             self.logger.debug("Sending query to API:  %r", query)
@@ -386,14 +395,13 @@ class QuoLabQueryCommand(GeneratingCommand):
                 verify=self.verify)
             http_calls += 1
 
-
             if response.status_code >= 400 and response.status_code < 500:
                 body = response.json()
                 if "status" in body or "message" in body:
                     status = body.get("status", response.status_code)
                     message = body.get("message", "")
                     self.logger.error("QuoLab API returned unexpected status response from query.  "
-                                    "status=%r message=%r query=%r", status, message, query)
+                                      "status=%r message=%r query=%r", status, message, query)
                     self.write_error("QuoLab query failed:  {} ({})", message, status)
                     return
 
@@ -418,7 +426,10 @@ class QuoLabQueryCommand(GeneratingCommand):
                 if i >= query_limit:
                     break
 
-            # XXX: Add overall timeout check
+            if monotonic() > expire:
+                self.logger.warning("Aborting query due to time expiration")
+                break
+
             if i >= query_limit:
                 break
 
@@ -429,8 +440,8 @@ class QuoLabQueryCommand(GeneratingCommand):
                 query["resume"] = ellipsis
             else:
                 break
-        self.logger.info("Query/return efficiency: http_calls=%d, query_limit=%d, per_post_limit=%d",
-                         http_calls, query_limit, query["limit"])
+        self.logger.info("Query/return efficiency: http_calls=%d, query_limit=%d, per_post_limit=%d duration=%0.3f",
+                         http_calls, query_limit, query["limit"], monotonic()-start)
 
     def generate(self):
         # Because the splunklib search interface does a *really* bad job a reporting exceptions / logging stack traces :-(
