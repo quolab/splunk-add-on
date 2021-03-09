@@ -88,8 +88,9 @@ Not sure which one this is:
 index=_internal sourcetype=splunkd SetupAdminHandler quolab_servers/quolab_serversendpoint
 ```
 
+## License
 
-
+TA-quolab is available under the [Apache 2](https://www.apache.org/licenses/LICENSE-2.0) license.
 
 
 ## Reference
