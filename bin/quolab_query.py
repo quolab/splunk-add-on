@@ -232,9 +232,8 @@ class QuoLabQueryCommand(GeneratingCommand):
     ##Syntax
 
     .. code-block::
-        quolab_query type=X value
-        quolab_query type=ip-address value=1.2.3.4
-        quolab_query type=ip-address 1.2.3.4
+        quolabquery type=X value=Y
+        quolabquery type=ip-address value="1.2.3.4, 2.3.4.5"
 
     ##Description
 
@@ -254,7 +253,8 @@ class QuoLabQueryCommand(GeneratingCommand):
     )
 
     value = Option(
-        require=False
+        require=False,
+        validate=validators.List()
     )
 
     query = Option(
@@ -484,7 +484,6 @@ class QuoLabQueryCommand(GeneratingCommand):
                     "type": self.type,
                 }
             }
-            # XXX:  Support multiple values
             if self.value:
                 query["query"]["id"] = self.value
 

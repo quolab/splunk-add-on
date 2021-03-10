@@ -63,6 +63,8 @@ If you would like to develop or build this TA from source, see the [development]
 ## Example usage
 
 ```
+| quolabquery type=ip-address value="8.8.8.8, 1.2.3.4"
+
 | quolabquery query="{'query':{'class': 'sysfact', 'type': 'case' },'limit': 15, 'facets': {'display': 1,'tagged': true}}"
 
 | quolabquery query="[{'class': 'sysfact', 'type': 'endpoint'}, {'class': 'sysfact', 'type': 'connector'}]" limit=100
