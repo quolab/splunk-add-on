@@ -37,7 +37,7 @@ class ConfigApp(admin.MConfigHandler):
         Set up supported arguments
         '''
         if self.requestedAction == admin.ACTION_EDIT:
-            for arg in ['url', 'username', 'fetch_count', 'timeout', 'verify', 'secret']:
+            for arg in ['url', 'username', 'max_batch_size', 'max_execution_time', 'verify', 'secret']:
                 self.supportedArgs.addReqArg(arg)
 
     def _fetch_secret(self, stanza):

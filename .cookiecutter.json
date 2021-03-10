@@ -1,4 +1,3 @@
-
 {
     "vendor_product": "QuoLab",
     "app_folder": "TA-quolab",
@@ -14,7 +13,7 @@
     "allow_insecure": true,
     "secret_name": "secret",
     "conf_name": "quolab_servers",
-    "conf_fields": "url,username,fetch_count,timeout,verify",
+    "conf_fields": "url,username,max_batch_size,max_execution_time,verify",
     "rest_name": "quolab_servers",
     "json_output": true,
     "on_splunkbase": true,

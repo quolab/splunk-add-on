@@ -7,15 +7,16 @@ const appLabel = "QuoLab add-on for Splunk";
 const confFieldsArray = [
     "url",
     "username",
-    "fetch_count",
-    "timeout",
-    "verify"
+    "max_batch_size",
+    "max_execution_time",
+    "verify",
 ].concat("secret");
-const confFieldsObject = Object.assign(...confFieldsArray.map(key => ({ [key]: "" })));
+const confFieldsObject = Object.assign(
+    ...confFieldsArray.map((key) => ({ [key]: "" }))
+);
 
 const APP_NAME = "TA-quolab";
-const PATH =
-    "quolab_servers/quolab_serversendpoint";
+const PATH = "quolab_servers/quolab_serversendpoint";
 
 const namespace = {
     owner: "nobody",
@@ -76,22 +77,18 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
             if (runUpdate || true) {
                 await Config.completeSetup(service);
                 await Config.reloadSplunkApp(service, APP_NAME);
-            };
+            }
         } catch (error) {
             console.error(error);
         }
-    }
+    };
 
     const getConfEntries = async () => {
         try {
             const http = new splunkjs.SplunkWebHttp();
             const service = new splunkjs.Service(http, namespace);
 
-            const collection = new ConfCollection(
-                service,
-                PATH,
-                namespace
-            );
+            const collection = new ConfCollection(service, PATH, namespace);
 
             // TODO: change this method to fetch()
             const conf_entry_JSON = await collection.get("", {});
@@ -99,15 +96,15 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
             const { entry } = conf_entry_data;
 
             const sanitized_entries = entry.map((item) => {
-                 item.content.secret = "[masked]";
-                 return item;
-             });
+                item.content.secret = "[masked]";
+                return item;
+            });
 
             return sanitized_entries;
         } catch (error) {
             console.error(error);
         }
-    }
+    };
 
     const e = react.createElement;
 
@@ -147,23 +144,24 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
             setIsError(false);
             const { name, value } = event.target;
 
-            switch(name) {
+            switch (name) {
                 case "stanza":
                     setStanza(value);
                     break;
                 default:
-                    setConf(prevState => ({
+                    setConf((prevState) => ({
                         ...prevState,
-                        [name]: value
+                        [name]: value,
                     }));
-                }
+            }
         };
 
         const handleEdit = (event) => {
             const { name } = event.target;
             setStanza(name);
-            const { url, username, token, verify } =
-                confEntries.find(entry => entry.name === name).content;
+            const { url, username, token, verify } = confEntries.find(
+                (entry) => entry.name === name
+            ).content;
             setConf({ url, username, token, verify });
             setShowForm(true);
             setShowTable(false);
@@ -173,7 +171,7 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
             event.preventDefault();
 
             try {
-                await perform( {stanza, ...conf}, isFirstRunComplete );
+                await perform({ stanza, ...conf }, isFirstRunComplete);
                 setStanza("");
                 setConf(confFieldsObject);
                 setShowForm(false);
@@ -183,108 +181,148 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
             }
 
             setIsFetching(true);
-        }
+        };
 
         const toggleForm = () => {
             setStanza("");
             setConf(confFieldsObject);
             setShowForm(!showForm);
-            setShowTable(!showTable) ;
+            setShowTable(!showTable);
         };
 
         const NewConfEntryButton = () => {
             return e("div", null, [
-                    e("div", { class: "pull-right" }, [
-                        e("div", { class: "actionButtons" }, [
-                            e("a", { href: "#", class: "btn-primary", onClick: toggleForm }, [
-                                e("span", null, "New Entry"),
-                            ]),
-                        ]),
-                    ])
-            ])
-        }
+                e("div", { class: "pull-right" }, [
+                    e("div", { class: "actionButtons" }, [
+                        e(
+                            "a",
+                            {
+                                href: "#",
+                                class: "btn-primary",
+                                onClick: toggleForm,
+                            },
+                            [e("span", null, "New Entry")]
+                        ),
+                    ]),
+                ]),
+            ]);
+        };
 
         const ConfEntriesTable = (props) => {
             const { confEntries } = props;
 
-            if (confEntries === []) return e("h2", null, "Add a configuration entry to get started.");
+            if (confEntries === [])
+                return e(
+                    "h2",
+                    null,
+                    "Add a configuration entry to get started."
+                );
 
             return e("div", null, [
-                        e("h2", null, "Configuration Entries"),
-                        e("table", { class: "table table-striped table-hover" }, [
-                            e("thead", null, [
-                                e("tr", null, [
-                                    e("th", { class: "sorts active" }, "Name"),
-                                    confFieldsArray.map( (field) => {
-                                        return e("th", { class: "sorts" }, `${field[0].toUpperCase() + field.substr(1).toLowerCase()}: `)
-                                    }),
-                                    e("th", { class: "sorts" }, "Actions"),
-                                    e("th", { class: "sorts" }, "Status"),
-                                ]),
-                            ]),
-                            e("tbody", null, [
-                                confEntries.map( (entry) => {
-                                    return e("tr", null, [
-                                        e("td", null, entry.name),
-                                        confFieldsArray.map( (field) => {
-                                            return e("td", null, entry.content[field])
-                                        }),
-                                        e("td", null, [e("a", { name: entry.name, onClick: handleEdit }, "Edit")]),
-                                        e("td", { class:
-                                            `status ${entry.content.disabled ?
-                                            "icon-lock disable-icon enable-text" :
-                                            "enable-icon icon-check enable-text"}`,
-                                            }, entry.content.disabled ? "disabled" : "enabled"),
-                                    ])
-                                })
-                            ]),
+                e("h2", null, "Configuration Entries"),
+                e("table", { class: "table table-striped table-hover" }, [
+                    e("thead", null, [
+                        e("tr", null, [
+                            e("th", { class: "sorts active" }, "Name"),
+                            confFieldsArray.map((field) => {
+                                return e(
+                                    "th",
+                                    { class: "sorts" },
+                                    `${
+                                        field[0].toUpperCase() +
+                                        field.substr(1).toLowerCase()
+                                    }: `
+                                );
+                            }),
+                            e("th", { class: "sorts" }, "Actions"),
+                            e("th", { class: "sorts" }, "Status"),
+                        ]),
                     ]),
+                    e("tbody", null, [
+                        confEntries.map((entry) => {
+                            return e("tr", null, [
+                                e("td", null, entry.name),
+                                confFieldsArray.map((field) => {
+                                    return e("td", null, entry.content[field]);
+                                }),
+                                e("td", null, [
+                                    e(
+                                        "a",
+                                        {
+                                            name: entry.name,
+                                            onClick: handleEdit,
+                                        },
+                                        "Edit"
+                                    ),
+                                ]),
+                                e(
+                                    "td",
+                                    {
+                                        class: `status ${
+                                            entry.content.disabled
+                                                ? "icon-lock disable-icon enable-text"
+                                                : "enable-icon icon-check enable-text"
+                                        }`,
+                                    },
+                                    entry.content.disabled
+                                        ? "disabled"
+                                        : "enabled"
+                                ),
+                            ]);
+                        }),
+                    ]),
+                ]),
             ]);
         };
 
         return e("div", null, [
-                    e("h2", null, `${appLabel} Setup Page`),
-                    !showForm ?
-                        e(NewConfEntryButton, null, null)
-                        :
-                        null,
-                    showForm ?
-                        e("div", { class: "setup container" }, [
-                            e("form", { class: "right", onSubmit: handleSubmit }, [
-                                e("div", null, [
-                                    e("label", null, [
-                                        "Stanza: ",
-                                        e("input", { type: "text", name: "stanza", value: stanza, onChange: handleChange })
-                                    ]),
-                                ]),
-                                confFieldsArray.map( (field) => {
-                                    return e("label", null, [
-                                            `${field[0].toUpperCase() + field.substr(1).toLowerCase()}: `,
-                                                e("input", {
-                                                    type: "text",
-                                                    name: field,
-                                                    value: conf[field],
-                                                    onChange: handleChange
-                                                    }
-                                                )
-                                            ])
-                                }),
-                                e("a", { href: "#", class: "btn", onClick: toggleForm }, [
-                                    e("span", null, "Cancel"),
-                                ]),
-                                e("input", { type: "submit", class: "btn-primary", value: "Submit" }),
-                            ]),
-                        ])
-                        :
-                        null,
-                    showTable ?
-                        e(ConfEntriesTable, { confEntries }, null)
-                        :
-                        null,
-                    isError ?
-                        e("p", null, "Error fetching configuration entries.")
-                        :
-                        null,
+            e("h2", null, `${appLabel} Setup Page`),
+            !showForm ? e(NewConfEntryButton, null, null) : null,
+            showForm
+                ? e("div", { class: "setup container" }, [
+                      e("form", { class: "right", onSubmit: handleSubmit }, [
+                          e("div", null, [
+                              e("label", null, [
+                                  "Stanza: ",
+                                  e("input", {
+                                      type: "text",
+                                      name: "stanza",
+                                      value: stanza,
+                                      onChange: handleChange,
+                                  }),
+                              ]),
+                          ]),
+                          confFieldsArray.map((field) => {
+                              return e("label", null, [
+                                  `${
+                                      field[0].toUpperCase() +
+                                      field.substr(1).toLowerCase()
+                                  }: `,
+                                  e("input", {
+                                      type: "text",
+                                      name: field,
+                                      value: conf[field],
+                                      onChange: handleChange,
+                                  }),
+                              ]);
+                          }),
+                          e(
+                              "a",
+                              { href: "#", class: "btn", onClick: toggleForm },
+                              [e("span", null, "Cancel")]
+                          ),
+                          e("input", {
+                              type: "submit",
+                              class: "btn-primary",
+                              value: "Submit",
+                          }),
+                      ]),
+                  ])
+                : null,
+            showTable ? e(ConfEntriesTable, { confEntries }, null) : null,
+            isError
+                ? e("p", null, "Error fetching configuration entries.")
+                : null,
         ]);
     };
 
