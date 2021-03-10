@@ -183,7 +183,7 @@ def dict_to_splunk_fields(obj, prefix=()):
                 output.extend(dict_to_splunk_fields(item, prefix=prefix))
     elif isinstance(obj, bool):
         output.append((prefix, "true" if obj else "false"))
-    elif isinstance(obj, (str, int, float)) or obj is None:
+    elif isinstance(obj, (six.text_type, int, float)) or obj is None:
         output.append((prefix, obj))
     else:
         raise TypeError("Unsupported datatype {}".format(type(obj)))
