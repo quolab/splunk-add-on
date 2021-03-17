@@ -66,10 +66,9 @@ If you would like to develop or build this TA from source, see the [development]
 
 | quolabquery query="[{'class': 'sysfact', 'type': 'endpoint'}, {'class': 'sysfact', 'type': 'connector'}]" limit=100
 
-| quolabquery query="{'class': 'sysfact', 'type': 'endpoint'}" limit=100 facets=display
+| quolabquery query="{'class': 'sysfact', 'type': 'endpoint'}" limit=100 facets="refcount,display"
 
-| quolabquery type=endpoint limit=100 facets=display value=tlsh:tlsh=virtual
-
+| quolabquery type=endpoint value=tlsh:tlsh=virtual facets=display
 ```
 
 ## Troubleshoot
