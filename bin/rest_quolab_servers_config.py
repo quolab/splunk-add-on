@@ -1,21 +1,16 @@
-""" Custom REST EAI handler for the new "/quolab_servers" handler.  This is a very simple wrapper granting
-access to the custom "quolab_servers.conf" configuration file.
-
-Various ideas and code inspired and/or borrowed from:
-
- https://dev.splunk.com/enterprise/docs/devtools/customrestendpoints/customresteai/
- https://answers.splunk.com/answers/105339/how-do-i-allow-users-to-edit-credentials-using-the-setup-screen.html
+""" Custom REST EAI handler for the new "/quolab/quolab_servers" handler.  This is a very simple wrapper granting
+access to the custom "quolab_servers.conf" configuration file with secret values.
 
 A listing of the REST endpoints and their functions are provided in the top-level README.md.
 """
 
 
+import splunk
 import splunk.admin as admin
 import splunk.entity as en
 import splunk.rest as rest
 
-
-# So that the correct version of requests gets loaded
+# Manipulate python path to ensure the correct version of 'requests' gets loaded
 import os
 import sys
 lib_dir = os.path.join(os.path.dirname(__file__), "..", "lib")
@@ -23,6 +18,14 @@ sys.path.insert(0, lib_dir)
 del lib_dir, os, sys
 APP_NAME = "TA-quolab"
 SECRET_KEY = ":quolab_servers_secret__{}:"
+
+FIELD_NAMES = [
+    "url",
+    "username",
+    "max_batch_size",
+    "max_execution_time",
+    "verify"
+]
 
 
 class ConfigApp(admin.MConfigHandler):
@@ -37,14 +40,14 @@ class ConfigApp(admin.MConfigHandler):
         Set up supported arguments
         '''
         if self.requestedAction == admin.ACTION_EDIT:
-            for arg in ['url', 'username', 'fetch_count', 'timeout', 'verify', 'secret']:
+            for arg in FIELD_NAMES:
                 self.supportedArgs.addReqArg(arg)
+            self.supportedArgs.addOptArg("secret")
 
     def _fetch_secret(self, stanza):
-        import splunk
         import requests
         import json
-        url = '{}/services/quolab_servers_fetch_secret/{}'.format(
+        url = '{}/services/quolab/quolab_servers_secret/{}'.format(
             splunk.getLocalServerInfo(), stanza)
         try:
             r = requests.post(url, verify=False, headers={
@@ -70,23 +73,32 @@ class ConfigApp(admin.MConfigHandler):
         url = en.buildEndpoint("storage/passwords", password_name,
                                namespace=APP_NAME, owner="nobody")
         if rest.checkResourceExists(url, sessionKey=self.getSessionKey()):
-            # Update existing password
-            rest.simpleRequest(url, postargs={"password": secret},
-                               sessionKey=self.getSessionKey())
+            # Check to see if and upaded secret was provided.  If not, assume no password change was desired
+            if secret:
+                # Update existing password
+                rest.simpleRequest(url, postargs={"password": secret},
+                                   sessionKey=self.getSessionKey())
         else:
+            if not secret:
+                raise admin.ArgValidationException(
+                    "New quolab_servers entries require a value for 'secret'")
             # Create new password storage entry
             url = en.buildEndpoint("storage/passwords", namespace=APP_NAME, owner="nobody")
             realm, name, _ = password_name.split(":", 3)
             rest.simpleRequest(url, postargs={"realm": realm, "name": name, "password": secret},
                                sessionKey=self.getSessionKey())
 
+    def _remove_secret(self, stanza):
+        password_name = SECRET_KEY.format(stanza)
+        url = en.deleteEntity("storage/passwords", password_name, namespace=APP_NAME, owner="nobody",
+                              sessionKey=self.getSessionKey())
+
     def handleList(self, confInfo):
         confDict = self.readConf("quolab_servers")
         if confDict is not None:
             for stanza, settings in confDict.items():
                 for key, val in settings.items():
-
-                    if key in ['url'] and val in [None, '']:
+                    if key in FIELD_NAMES and val in [None, '']:
                         val = ''
                     confInfo[stanza].append(key, val)
                     # Fetch encrypted password from storage/passwords
@@ -109,6 +121,16 @@ class ConfigApp(admin.MConfigHandler):
             # with the 'rest_properties_get' capability enabled (which is by default for the 'user' role)
             self.callerArgs.data["secret"] = ["HIDDEN"]
         self.writeConf('quolab_servers', stanza, self.callerArgs.data)
+
+    def handleRemove(self, confInfo):
+        stanza = self.callerArgs.id
+        try:
+            en.deleteEntity("configs/conf-quolab_servers", stanza,
+                            namespace=APP_NAME, owner="nobody", sessionKey=self.getSessionKey())
+            self._remove_secret(stanza)
+        except splunk.ResourceNotFound:
+            # If already deleted, silently ignore
+            pass
 
 
 # initialize the handler

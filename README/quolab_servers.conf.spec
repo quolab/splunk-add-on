@@ -4,6 +4,6 @@
 secret = <str>
 url = <url>
 username = <str>
-fetch_count = <int>
-timeout = <str>
+max_batch_size = <str>
+max_execution_time = <str>
 verify = <str>

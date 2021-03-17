@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys
+from pathlib import Path
 from ksconf.builder import BuildManager, VERBOSE, QUIET, default_cli
 from ksconf.builder.steps import clean_build, copy_files, pip_install
 
@@ -37,12 +38,19 @@ def python_packages(step):
 
 
 def package_spl(step):
+    top_dir = step.dist_path.parent
+    release_path = top_dir / ".release_path"
+    release_name = top_dir / ".release_name"
     step.run(sys.executable, "-m", "ksconf", "package",
              "--file", step.dist_path / SPL_NAME,   # Path to created tarball
              "--app-name", APP_FOLDER,              # Top-level directory name
              "--block-local",                       # Build from version control should have no 'local' folder
-             "--release-file",  step.dist_path.parent / ".latest_release",
+             "--release-file", str(release_path),
              ".")
+    # Provide the dist file as a short name too (useful for some CI/CD tools)
+    path = release_path.read_text()
+    short_name = Path(path).name
+    release_name.write_text(short_name)
 
 
 def build(step, args):

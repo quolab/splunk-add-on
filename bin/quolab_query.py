@@ -15,6 +15,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))  # nope
 
 import six
 import requests
+from cypresspoint.datatype import as_bool
+from cypresspoint.searchcommand import ensure_fields
+
+from cypresspoint.spath import splunk_dot_notation
+
 from requests.auth import HTTPBasicAuth
 from splunklib.client import Entity
 from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration, Option, validators
@@ -29,71 +34,6 @@ log.setLevel(logging.DEBUG)
 """
 
 
-def sanitize_fieldname(field):
-    clean = re.sub(r'[^A-Za-z0-9_.{}\[\]-]', "_", field)
-    # Remove leading/trailing underscores
-    clean = clean.strip("_")
-    return clean
-
-
-def dict_to_splunk_fields(obj, prefix=()):
-    """
-    Input:  Object   (dict, list, str/int/float)
-    Output:  [  ( (name,name), value) ]
-
-    Convention:  Arrays suffixed with "{}"
-    """
-    output = []
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            key = sanitize_fieldname(key)
-            output.extend(dict_to_splunk_fields(value, prefix=prefix+(key,)))
-    elif isinstance(obj, (list, list)):
-        if prefix:
-            prefix = prefix[:-1] + (prefix[-1] + "{}",)
-            for item in obj:
-                output.extend(dict_to_splunk_fields(item, prefix=prefix))
-    elif isinstance(obj, bool):
-        output.append((prefix, "true" if obj else "false"))
-    elif isinstance(obj, (str, int, float)) or obj is None:
-        output.append((prefix, obj))
-    else:
-        raise TypeError("Unsupported datatype {}".format(type(obj)))
-    return output
-
-
-def splunk_dot_notation(obj):
-    d = {}
-    if not isinstance(obj, dict):
-        raise ValueError("Expected obj to be a dictionary, received {}".format(type(obj)))
-    for field_pair, value in dict_to_splunk_fields(obj):
-        field_name = ".".join(field_pair)
-        if field_name in d:
-            if not isinstance(d[field_name], list):
-                d[field_name] = [d[field_name]]
-            d[field_name].append(value)
-        else:
-            d[field_name] = value
-    return d
-
-
-def ensure_fields(results):
-    """ Ensure that the first result has a placeholder for *ALL* the fields """
-    field_set = set()
-    output = []
-    for result in results:
-        field_set.update(result.keys())
-        output.append(result)
-    if output:
-        # Apply *all* fields to the first result; all other rows are left alone
-        output[0] = {k: output[0].get(k, None) for k in field_set}
-    return output
-
-
-def as_bool(s):
-    return s.lower()[0] in ("t", "y", "e", "1")
-
-
 @Configuration()
 class QuoLabQueryCommand(GeneratingCommand):
     """
@@ -101,14 +41,15 @@ class QuoLabQueryCommand(GeneratingCommand):
     ##Syntax
 
     .. code-block::
-        quolabquery field=input
+        quolabqueryserver=my_server field=input
 
     ##Description
 
     ##Example
     """
     server = Option(
-        requred=False,
+        require=False,
+        default="QuoLab",
         validate=validators.Match("server", "[a-zA-Z0-9._]+"))
 
     output = Option(
@@ -116,7 +57,7 @@ class QuoLabQueryCommand(GeneratingCommand):
         validate=validators.Fieldname())
 
     field_set = Option(
-        require=True,
+        require=False,
         validate=validators.Set("a", "b", "c"))
 
     field_int = Option(
@@ -145,7 +86,7 @@ class QuoLabQueryCommand(GeneratingCommand):
     # Log the commands given to the SPL command:
     self.logger.debug('QuoLabQueryCommand: %s', self)
 
-    # Access metadata about the search, such as earliset_time for the selected time range
+    # Access metadata about the search, such as earliest_time for the selected time range
     self.metadata.searchinfo.earliest_time
 
 
@@ -158,12 +99,12 @@ class QuoLabQueryCommand(GeneratingCommand):
     """
 
     def __init__(self):
-        # COOKIECUTTER-TODO: initialize these variables as appropriate  (url, username, fetch_count, timeout, verify)
+        # COOKIECUTTER-TODO: initialize these variables as appropriate  (url, username, max_batch_size, max_execution_time, verify)
         self.api_url = None
         self.api_username = None
-        self.api_fetch_count = None
-        self.api_timeout = None
-        self.verify = verify
+        self.api_max_batch_size = None
+        self.api_max_execution_time = None
+        self.verify = True
         self.api_secret = None
         # self._cache = {}
         super(QuoLabQueryCommand, self).__init__()
@@ -176,7 +117,7 @@ class QuoLabQueryCommand(GeneratingCommand):
         # Determine name of stanza to load
         server_name = self.server or "default"
         try:
-            api = Entity(self.service, "quolab_servers/quolab_serversendpoint/{}".format(server_name))
+            api = Entity(self.service, "quolab/quolab_servers/{}".format(server_name))
         except Exception:
             self.error_exit("No known server named '{}', check quolab_servers.conf)".format(self.server),
                             "Check value provided for 'server=' option.")
@@ -185,8 +126,8 @@ class QuoLabQueryCommand(GeneratingCommand):
 
         self.api_url = api["url"]
         self.api_username = api["username"]
-        self.api_fetch_count = api["fetch_count"]
-        self.api_timeout = api["timeout"]
+        self.api_max_batch_size = api["max_batch_size"]
+        self.api_max_execution_time = api["max_execution_time"]
         self.verify = as_bool(api["verify"])
         self.logger.debug("Entity api: %r", self.api_url)
         self.api_secret = api["secret"]
@@ -220,9 +161,12 @@ class QuoLabQueryCommand(GeneratingCommand):
         return (None, result)
 
     def generate(self):
+        # COOKIECUTTER-TODO: Replace this code with your own generating logic
         for i in range(100):
             yield {"_raw": "Sample event {}".format(i),
                    self.output: "This is the field with a new value!",
+                   "server": self.server,
+                   "UNUSED_ARGUMENTS": self.fieldnames,
                    "_time": time.time()}
 
 
