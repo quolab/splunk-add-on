@@ -1,16 +1,21 @@
 <dashboard>
-  <label>Welcome</label>
-  <row>
-    <panel>
-      <html>
-        <h2>Welcome to QuoLab</h2>
-        <p/>
-        <p>
-          <b>COOKIECUTTER-TODO:  Add intro text here</b>
-        </p>
-
-            Click <a href="configure">here</a> to configure.
-        </html>
-    </panel>
-  </row>
+    <label>Welcome</label>
+    <row>
+        <panel>
+            <html>
+                <h2>Welcome to QuoLab</h2>
+                <p>
+                    <b>COOKIECUTTER-TODO:  Add intro text here</b>
+                </p>
+                <h3>Configure</h3>
+                <p>
+                    Click <a href="configure">here</a> to configure.
+                </p>
+                <h3>Custom search command</h3>
+                <p>
+                    <tt>quolabquery server=my_server field=input</tt>
+                </p>
+            </html>
+        </panel>
+    </row>
 </dashboard>

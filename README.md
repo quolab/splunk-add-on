@@ -1,6 +1,18 @@
-
 # TA-quolab
-*QuoLab add-on for Splunk*
+
+_QuoLab add-on for Splunk_
+
+
+[![Build Status](https://github.com/quolab/splunk-add-on/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/quolab/splunk-add-on/actions)
+
+
+## Install
+
+
+
+This app is available for download and installation on [Splunkbase](https://splunkbase.splunk.com/apps/#/search/TA-quolab/).
+Additional details can be found at [here](./.splunkbase/details.md).
+
 
 
 ## Sourcetypes
@@ -9,73 +21,27 @@
 | ---------- | ------- |
 | command:quolabquery | Internal logs and stats related to custom QuoLab SPL command. |
 
-
 ## Troubleshooting
 
-Internal/script errors:
+Find internal/script errors:
+
 ```
 index=_internal (source=*quolab.log*) OR (sourcetype=splunkd quolab_query.py)
 ```
 
-Review all modular input logs:
+Review SPL search command logs:
+
 ```
 index=_internal sourcetype=command:quolabquery | transaction host Pid
-```
-
-## REST Endpoints
-
-Information available via various REST endpoints:
-
-
-| REST endpoint | Script | Information shown |
-| ------------- | ------ | ----------------- |
-| `/servicesNS/-/-/quolab/quolab_servers/<name>` | `rest_quolab_servers_config.py` | Read/write properties and unencrypted 'secret'; restricted via capabilities.  Only `read_quolab_servers_config` can read, and `edit_quolab_servers_config` can write.|
-| `/servicesNS/-/-/configs/conf-quolab_servers` | N/A (native) | Shows 'secret' as "HIDDEN" |
-| `/servicesNS/-/-/properties/quolab_servers/<name>/secret` | N/A (native) | Shows 'value' as "HIDDEN" |
-| `/servicesNS/-/-/storage/passwords` | N/A (native) | Will show `password` in encrypted form (as stored in `passwords.conf`) and `clear_password` (unencrypted).  Access is restricted to users with the `list_storage_passwords` capability. |
-| `/services/quolab/{ cookiecutter.rest_name }}_secret` | `rest_quolab_servers_secret.py` | Show unencrypted `secret` and is restricted via capabilities.  Uses the scripted rest handler with `passSystemAuth` enabled so that the necessary secret can be obtained without being an admin. |
-
-
-To setup a new 'test' configuration stanza from the CLI, run:
-
-```bash
-curl -ks -u admin:changeme -X POST \
-    https://127.0.0.1:8089/servicesNS/nobody/TA-quolab/quolab/quolab_servers/test \
-    -d url=https://server.example/path/v1/api\
-    -d username=admin\
-    -d max_batch_size=Max_batch_size\
-    -d max_execution_time=Max_execution_time\
-    -d verify=true\
-    -d secret=SECRET-VALUE
 ```
 
 ## Development
 
 If you would like to develop or build this TA from source, see the [development](./DEVELOPMENT.md) documentation.
 
-
-## Troubleshoot
-
-### Rest endpoint
-
-**Show errors thrown in Admin Manager extension:**
-```
-index=_internal sourcetype=splunkd ERROR AdminManagerExternal TA-quolab rest_quolab_servers_config.py | eval _raw=replace(_raw, "\\\n", urldecode("%0a"))
-```
-
-Find errors related to secret handler
-```
-index=_internal sourcetype=splunkd SetupAdminHandler quolab/quolab_servers_secret
-```
-
-
-
-
-
 ## Reference
 
  * **API Docs**:  https://....
 
 
-This addon was built from the [Kintyre spl addon](https://github.com/Kintyre/cypress_ta_spl) (version 0.5.0) [cookiecutter](https://github.com/audreyr/cookiecutter) project.
-
+This addon was built from the [Kintyre spl addon](https://github.com/Kintyre/cypress_ta_spl) (version 0.6.0) [cookiecutter](https://github.com/audreyr/cookiecutter) project.

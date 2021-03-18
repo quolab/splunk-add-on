@@ -41,7 +41,7 @@ class QuoLabQueryCommand(GeneratingCommand):
     ##Syntax
 
     .. code-block::
-        quolabqueryserver=my_server field=input
+        quolabquery server=my_server field=input
 
     ##Description
 

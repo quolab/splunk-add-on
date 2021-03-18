@@ -73,7 +73,7 @@ class ConfigApp(admin.MConfigHandler):
         url = en.buildEndpoint("storage/passwords", password_name,
                                namespace=APP_NAME, owner="nobody")
         if rest.checkResourceExists(url, sessionKey=self.getSessionKey()):
-            # Check to see if and upaded secret was provided.  If not, assume no password change was desired
+            # Check to see if and updated secret was provided.  If not, assume no password change was desired
             if secret:
                 # Update existing password
                 rest.simpleRequest(url, postargs={"password": secret},
