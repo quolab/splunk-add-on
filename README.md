@@ -2,62 +2,14 @@
 
 _QuoLab add-on for Splunk_
 
+[![Build Status](https://github.com/quolab/splunk-add-on/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/quolab/splunk-add-on/actions)
+
+## Install
+
+This app is available for download and installation on [Splunkbase](https://splunkbase.splunk.com/apps/#/search/TA-quolab/).
+Additional details can be found at [here](./.splunkbase/details.md).
+
 ## Sourcetypes
-
-| Sourcetype | Purpose |
-| ---------- | ------- |
-| command:quolabquery | Internal logs and stats related to custom QuoLab SPL command. |
-
-## Troubleshooting
-
-Enable debug logging:
-
-```
-| quolabquery logging_level=DEBUG query=...
-```
-
-Internal/script errors:
-
-```
-index=_internal (source=*quolab.log*) OR (sourcetype=splunkd quolab_query.py)
-```
-
-Review all modular input logs:
-
-```
-index=_internal sourcetype=command:quolabquery | transaction host Pid
-```
-
-## REST Endpoints
-
-Information available via various REST endpoints:
-
-
-| REST endpoint | Script | Information shown |
-| ------------- | ------ | ----------------- |
-| `/servicesNS/-/-/quolab/quolab_servers/<name>` | `rest_quolab_servers_config.py` | Read/write properties and unencrypted 'secret'; restricted via capabilities.  Only `read_quolab_servers_config` can read, and `edit_quolab_servers_config` can write.|
-| `/servicesNS/-/-/configs/conf-quolab_servers` | N/A (native) | Shows 'secret' as "HIDDEN" |
-| `/servicesNS/-/-/properties/quolab_servers/<name>/secret` | N/A (native) | Shows 'value' as "HIDDEN" |
-| `/servicesNS/-/-/storage/passwords` | N/A (native) | Will show `password` in encrypted form (as stored in `passwords.conf`) and `clear_password` (unencrypted).  Access is restricted to users with the `list_storage_passwords` capability. |
-| `/services/quolab/{ cookiecutter.rest_name }}_secret` | `rest_quolab_servers_secret.py` | Show unencrypted `secret` and is restricted via capabilities.  Uses the scripted rest handler with `passSystemAuth` enabled so that the necessary secret can be obtained without being an admin. |
-
-
-To setup a new 'test' configuration stanza from the CLI, run:
-
-```bash
-curl -ks -u admin:changeme -X POST \
-    https://127.0.0.1:8089/servicesNS/nobody/TA-quolab/quolab/quolab_servers/test \
-    -d url=https://server.example/path/v1/api\
-    -d username=admin\
-    -d max_batch_size=1000\
-    -d max_execution_time=300\
-    -d verify=true\
-    -d secret=SECRET-VALUE
-```
-
-## Development
-
-If you would like to develop or build this TA from source, see the [development](./DEVELOPMENT.md) documentation.
 
 ## Example usage
 
@@ -73,24 +25,32 @@ If you would like to develop or build this TA from source, see the [development]
 | quolabquery type=endpoint value=tlsh:tlsh=virtual facets=display
 ```
 
-## Troubleshoot
+## Troubleshooting
 
-### Rest endpoint
+Find internal/script errors:
 
-**Show errors thrown in Admin Manager extension:**
+Enable debug logging:
 
 ```
-index=_internal sourcetype=splunkd ERROR AdminManagerExternal TA-quolab rest_quolab_servers_config.py | eval _raw=replace(_raw, "\\\n", urldecode("%0a"))
+| quolabquery logging_level=DEBUG query=...
 ```
 
-Find errors related to secret handler
 ```
-index=_internal sourcetype=splunkd SetupAdminHandler quolab/quolab_servers_secret
+index=_internal (source=*quolab.log*) OR (sourcetype=splunkd quolab_query.py)
+```
+
+Review SPL search command logs:
+
+```
+index=_internal sourcetype=command:quolabquery | transaction host Pid
 ```
 
 ## License
 
 TA-quolab is available under the [Apache 2](https://www.apache.org/licenses/LICENSE-2.0) license.
+## Development
+
+If you would like to develop or build this TA from source, see the [development](./DEVELOPMENT.md) documentation.
 
 ## Reference
 
@@ -100,4 +60,4 @@ This SPL command uses the following API calls:
 
 -   `v1/catalog/query` - the "swiss-army-knife" of quolab data querying. Objects can be queried from QuoLab's graph data model, and aggregated, and/or enriched using facets as necessary.
 
-This addon was built from the [Kintyre spl addon](https://github.com/Kintyre/cypress_ta_spl) (version 0.5.0) [cookiecutter](https://github.com/audreyr/cookiecutter) project.
+This addon was built from the [Kintyre spl addon](https://github.com/Kintyre/cypress_ta_spl) (version 0.6.0) [cookiecutter](https://github.com/audreyr/cookiecutter) project.

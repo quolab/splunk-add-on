@@ -13,8 +13,6 @@ To quickly reload the app on a local Splunk instance during development:
 
     ./build.py && $SPLUNK_HOME/bin/splunk install app $(<.release_path) -update 1
 
-
-
 ## Python packages
 
 List all externally required Python packages in the `requirements.txt` file.
@@ -25,8 +23,6 @@ Please be aware of Python 2/3 compatibility concerns when picking external packa
 Python 2.7 support is going away for more and more packages, so pinning older versions may be required until targeting only Splunk 8+ for compatibility.
 The default build script only builds with a single version of Python, and doesn't attempt to separate packages based on OS or Python version.
 
-
-
 ## Development
 
 Setup a local virtual environment in the top level of the package to install the necessary build and runtime requirements.
@@ -35,6 +31,46 @@ Setup a local virtual environment in the top level of the package to install the
     . venv/bin/activate
     python -m pip install -U -r requirements-dev.txt
 
+## REST Endpoints
+
+Information available via various REST endpoints:
+
+
+| REST endpoint | Script | Information shown |
+| ------------- | ------ | ----------------- |
+| `/servicesNS/-/-/quolab/quolab_servers/<name>` | `rest_quolab_servers_config.py` | Read/write properties and unencrypted 'secret'; restricted via capabilities.  Only `read_quolab_servers_config` can read, and `edit_quolab_servers_config` can write.|
+| `/servicesNS/-/-/configs/conf-quolab_servers` | N/A (native) | Shows 'secret' as "HIDDEN" |
+| `/servicesNS/-/-/properties/quolab_servers/<name>/secret` | N/A (native) | Shows 'value' as "HIDDEN" |
+| `/servicesNS/-/-/storage/passwords` | N/A (native) | Will show `password` in encrypted form (as stored in `passwords.conf`) and `clear_password` (unencrypted).  Access is restricted to users with the `list_storage_passwords` capability. |
+| `/services/quolab/{ cookiecutter.rest_name }}_secret` | `rest_quolab_servers_secret.py` | Show unencrypted `secret` and is restricted via capabilities.  Uses the scripted rest handler with `passSystemAuth` enabled so that the necessary secret can be obtained without being an admin. |
+
+To setup a new 'test' configuration stanza from the CLI, run:
+
+```bash
+curl -ks -u admin:changeme -X POST \
+    https://127.0.0.1:8089/servicesNS/nobody/TA-quolab/quolab/quolab_servers/quolab \
+    -d url=https://server.example/path/v1/api\
+    -d username=admin\
+    -d max_batch_size=1000\
+    -d max_execution_time=300\
+    -d verify=true\
+    -d secret=SECRET-VALUE
+```
+
+### Troubleshooting
+
+Show errors thrown in Admin Manager extension:
+
+```
+index=_internal sourcetype=splunkd ERROR AdminManagerExternal TA-quolab rest_quolab_servers_config.py
+| eval _raw=replace(_raw, "\\\n", urldecode("%0a"))
+```
+
+Find errors related to secret handler:
+
+```
+index=_internal sourcetype=splunkd SetupAdminHandler quolab/quolab_servers_secret
+```
 
 ## Tools
 
