@@ -91,19 +91,23 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
                 console.log("Completing setup and reloading app.");
                 await Config.completeSetup(service);
                 await Config.reloadSplunkApp(service, APP_NAME);
-            }
+            };
         } catch (error) {
             const resolvedError = await resolveSDKError(error);
             throw new Error(`Submission error: ${resolvedError}`);
         }
-    };
+    }
 
     const getConfEntries = async () => {
         try {
             const http = new splunkjs.SplunkWebHttp();
             const service = new splunkjs.Service(http, namespace);
 
-            const collection = new ConfCollection(service, PATH, namespace);
+            const collection = new ConfCollection(
+                service,
+                PATH,
+                namespace
+            );
 
             // TODO: change this method to fetch():
             const confEntryJSON = await collection.get("", {});
@@ -139,7 +143,7 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
             const resolvedError = await resolveSDKError(error);
             throw new Error(`Error deleting configuration entry: ${resolvedError}`);
         }
-    };
+    }
 
     const e = react.createElement;
 
@@ -185,16 +189,16 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
             setErrorMessage(null);
             const { name, value } = event.target;
 
-            switch (name) {
+            switch(name) {
                 case "stanza":
                     setStanza(value);
                     break;
                 default:
-                    setConf((prevState) => ({
+                    setConf(prevState => ({
                         ...prevState,
-                        [name]: value,
+                        [name]: value
                     }));
-            }
+                }
         };
 
         const handleCancel= () => {
@@ -244,7 +248,7 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
             }
 
             setIsFetching(true);
-        };
+        }
 
         const NewConfEntryButton = () => {
             return e("div", null, [
@@ -309,7 +313,6 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
                                     })
                             ]),
                     ]),
-                ]),
             ]);
         };
 
