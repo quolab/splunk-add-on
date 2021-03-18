@@ -47,6 +47,7 @@ def package_spl(step):
              "--block-local",                       # Build from version control should have no 'local' folder
              "--release-file", str(release_path),
              ".")
+    # Provide the dist file as a short name too (useful for some CI/CD tools)
     path = release_path.read_text()
     short_name = Path(path).name
     release_name.write_text(short_name)

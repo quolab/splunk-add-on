@@ -1,27 +1,40 @@
-/**
- */
+
 
 import * as Config from "./setup_configuration.js";
 
-const appLabel = "QuoLab add-on for Splunk";
+const APP_LABEL = "QuoLab add-on for Splunk";
+const APP_NAME = "TA-quolab";
+const CONF_TYPE = "Server";
+const PATH = "quolab/quolab_servers";
+const SECRET_NAME = "secret";
+
 const confFieldsArray = [
     "url",
     "username",
     "max_batch_size",
     "max_execution_time",
-    "verify",
-].concat("secret");
-const confFieldsObject = Object.assign(
-    ...confFieldsArray.map((key) => ({ [key]: "" }))
-);
+    "verify"
+].concat(SECRET_NAME);
+const confFieldsObject = Object.assign(...confFieldsArray.map(key => ({ [key]: "" })));
+const defaultStanzaName = "quolab";
+const namespace = { owner: "nobody", app: APP_NAME, sharing: "app" };
 
-const APP_NAME = "TA-quolab";
-const PATH = "quolab_servers/quolab_serversendpoint";
+const resolveSDKError = async (error) => {
+    if (typeof(error) == "string" ) return error;
 
-const namespace = {
-    owner: "nobody",
-    app: APP_NAME,
-    sharing: "app",
+    if (error.responseText) return error.responseText;
+
+    if (error.statusText) return error.statusText;
+
+    if (error.toString() != "[object Object]") {
+        return error.toString();
+    }
+
+    try {
+        return await JSON.stringify(error);
+    } catch(error) {
+        return "Unable to parse error message.";
+    }
 };
 
 define(["react", "splunkjs/splunk"], (react, splunkjs) => {
@@ -66,20 +79,22 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
         return new_entry;
     };
 
-    const perform = async (setupOptions, runUpdate) => {
+    const perform = async (setupOptions, shouldRunUpdate) => {
         try {
             const http = new splunkjs.SplunkWebHttp();
             const service = new splunkjs.Service(http, namespace);
-            const { stanza, confs, ...properties } = setupOptions;
+            const { stanza,  ...properties } = setupOptions;
 
             await update_configuration_data(service, stanza, properties);
 
-            if (runUpdate || true) {
+            if (shouldRunUpdate) {
+                console.log("Completing setup and reloading app.");
                 await Config.completeSetup(service);
                 await Config.reloadSplunkApp(service, APP_NAME);
             }
         } catch (error) {
-            console.error(error);
+            const resolvedError = await resolveSDKError(error);
+            throw new Error(`Submission error: ${resolvedError}`);
         }
     };
 
@@ -90,58 +105,84 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
 
             const collection = new ConfCollection(service, PATH, namespace);
 
-            // TODO: change this method to fetch()
-            const conf_entry_JSON = await collection.get("", {});
-            const conf_entry_data = await JSON.parse(conf_entry_JSON);
-            const { entry } = conf_entry_data;
+            // TODO: change this method to fetch():
+            const confEntryJSON = await collection.get("", {});
+            const confEntryData = await JSON.parse(confEntryJSON);
+            const { entry } = confEntryData;
 
-            const sanitized_entries = entry.map((item) => {
-                item.content.secret = "[masked]";
+            // eventually remove this:
+            const sanitizedEntries = entry.map((item) => {
+                delete item.content[SECRET_NAME];
                 return item;
-            });
+             });
 
-            return sanitized_entries;
+            return sanitizedEntries;
         } catch (error) {
-            console.error(error);
+            const resolvedError = await resolveSDKError(error);
+            throw new Error(`Error getting configuration entries: ${resolvedError}`);
+        }
+    }
+
+    const deleteConfEntry = async (name) => {
+        try {
+            const http = new splunkjs.SplunkWebHttp();
+            const service = new splunkjs.Service(http, namespace);
+
+            const entity = new ConfEntity(
+                service,
+                PATH,
+                namespace
+            );
+
+            await entity.del(name);
+        } catch (error) {
+            const resolvedError = await resolveSDKError(error);
+            throw new Error(`Error deleting configuration entry: ${resolvedError}`);
         }
     };
 
     const e = react.createElement;
 
     const SetupPage = () => {
-        const [stanza, setStanza] = react.useState("");
-        const [conf, setConf] = react.useState(confFieldsObject);
-        const [confEntries, setConfEntries] = react.useState([]);
-        const [isError, setIsError] = react.useState(false);
-        const [isFetching, setIsFetching] = react.useState(true);
-        const [showTable, setShowTable] = react.useState(false);
-        const [showForm, setShowForm] = react.useState(false);
-        const [isFirstRunComplete, setFirstRunComplete] = react.useState(false);
+        const { useEffect, useState } = react;
 
-        react.useEffect(() => {
+        const [stanza, setStanza] = useState("");
+        const [conf, setConf] = useState(confFieldsObject);
+        const [confEntries, setConfEntries] = useState([]);
+        const [defaultEntry, setDefaultEntry] = useState([]);
+        const [isEditing, setIsEditing] = useState(false);
+        const [isFetching, setIsFetching] = useState(true);
+        const [showForm, setShowForm] = useState(false);
+        const [isFirstRun, setIsFirstRun] = useState(true);
+        const [errorMessage, setErrorMessage] = useState(null);
+
+        useEffect(() => {
             const fetchConfEntries = async () => {
-                setIsError(false);
+                setShowForm(false);
 
                 try {
                     const entries = await getConfEntries();
-                    if (entries.length > 0) setFirstRunComplete(true);
-                    setConfEntries(entries);
-                    setShowTable(true);
+
+                    let defaultObject = entries.filter( (entry) => entry.name === "default")[0];
+                    defaultObject.content[SECRET_NAME] == "";
+                    const nonDefaults = entries.filter( (entry) => entry.name !== "default");
+
+                    setDefaultEntry(defaultObject);
+                    setConfEntries(nonDefaults);
                 } catch (error) {
-                    setIsError(true);
-                    setIsFetching(false);
-                    setShowTable(false);
                     console.error(error);
+                    setErrorMessage(error.message);
+                } finally {
+                    setIsFetching(false);
                 }
 
-                setIsFetching(false);
             };
 
             fetchConfEntries();
         }, [isFetching]);
 
         const handleChange = (event) => {
-            setIsError(false);
+            setErrorMessage(null);
             const { name, value } = event.target;
 
             switch (name) {
@@ -156,173 +197,169 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
             }
         };
 
+        const handleCancel= () => {
+            setErrorMessage(null);
+            setConf(confFieldsObject);
+            setIsEditing(false);
+            setStanza("");
+            setShowForm(!showForm);
+        };
+
         const handleEdit = (event) => {
+            setIsEditing(true);
+            setShowForm(true);
+            setErrorMessage(null);
             const { name } = event.target;
             setStanza(name);
-            const { url, username, token, verify } = confEntries.find(
-                (entry) => entry.name === name
-            ).content;
-            setConf({ url, username, token, verify });
+            let conf = confEntries.find(entry => entry.name === name).content;
+            delete conf[SECRET_NAME];
+            setConf(conf);
+        };
+
+        const handleNew = () => {
             setShowForm(true);
-            setShowTable(false);
+            setErrorMessage(null);
+            setStanza(confEntries.length > 0 ? "" : defaultStanzaName);
+            setConf(defaultEntry.content);
+        };
+
+        const handleDelete = async (event) => {
+            const { name } = event.target;
+            await deleteConfEntry(name);
+            setIsFetching(true);
         };
 
         const handleSubmit = async (event) => {
             event.preventDefault();
 
             try {
-                await perform({ stanza, ...conf }, isFirstRunComplete);
+                await perform( {stanza, ...conf}, isFirstRun );
                 setStanza("");
                 setConf(confFieldsObject);
+                setIsEditing(false);
+                setIsFirstRun(false);
                 setShowForm(false);
-                setShowTable(true);
             } catch (error) {
-                console.error(error);
+                setErrorMessage(error.message);
             }
 
             setIsFetching(true);
         };
 
-        const toggleForm = () => {
-            setStanza("");
-            setConf(confFieldsObject);
-            setShowForm(!showForm);
-            setShowTable(!showTable);
-        };
-
         const NewConfEntryButton = () => {
             return e("div", null, [
-                e("div", { class: "pull-right" }, [
-                    e("div", { class: "actionButtons" }, [
-                        e(
-                            "a",
-                            {
-                                href: "#",
-                                class: "btn-primary",
-                                onClick: toggleForm,
-                            },
-                            [e("span", null, "New Entry")]
-                        ),
-                    ]),
-                ]),
-            ]);
-        };
+                    e("div", { class: "pull-right" }, [
+                        e("div", { class: "actionButtons" }, [
+                            e("a", { href: "#", class: "btn btn-primary", disabled: isFetching, onClick: handleNew }, [
+                                e("span", null, `New ${CONF_TYPE}`),
+                            ]),
+                        ]),
+                    ])
+            ])
+        }
 
         const ConfEntriesTable = (props) => {
             const { confEntries } = props;
 
-            if (confEntries === [])
-                return e(
-                    "h2",
-                    null,
-                    "Add a configuration entry to get started."
-                );
+            if (isFetching) return e("h2", null, "Fetching configuration entries...");
+
+            if (!showForm && confEntries.length === 0) return e("h2", null, "No configuration entries found. Add one to get started.");
 
             return e("div", null, [
-                e("h2", null, "Configuration Entries"),
-                e("table", { class: "table table-striped table-hover" }, [
-                    e("thead", null, [
-                        e("tr", null, [
-                            e("th", { class: "sorts active" }, "Name"),
-                            confFieldsArray.map((field) => {
-                                return e(
-                                    "th",
-                                    { class: "sorts" },
-                                    `${
-                                        field[0].toUpperCase() +
-                                        field.substr(1).toLowerCase()
-                                    }: `
-                                );
-                            }),
-                            e("th", { class: "sorts" }, "Actions"),
-                            e("th", { class: "sorts" }, "Status"),
-                        ]),
-                    ]),
-                    e("tbody", null, [
-                        confEntries.map((entry) => {
-                            return e("tr", null, [
-                                e("td", null, entry.name),
-                                confFieldsArray.map((field) => {
-                                    return e("td", null, entry.content[field]);
-                                }),
-                                e("td", null, [
-                                    e(
-                                        "a",
-                                        {
-                                            name: entry.name,
-                                            onClick: handleEdit,
-                                        },
-                                        "Edit"
-                                    ),
+                        e("h2", null, "Configuration Entries"),
+                        e("table", { class: "table table-striped table-hover" }, [
+                            e("thead", null, [
+                                e("tr", null, [
+                                    e("th", { class: "sorts active" }, "Name"),
+                                    confFieldsArray
+                                        .filter( (field) => { return field !== SECRET_NAME } )
+                                        .map( (field) => {
+                                            return e("th", { class: "sorts" }, `${field[0].toUpperCase() + field.substr(1).toLowerCase()} `)
+                                    }),
+                                    e("th", { class: "sorts" }, "Actions"),
+                                    e("th", { class: "sorts" }, "Status"),
                                 ]),
-                                e(
-                                    "td",
-                                    {
-                                        class: `status ${
-                                            entry.content.disabled
-                                                ? "icon-lock disable-icon enable-text"
-                                                : "enable-icon icon-check enable-text"
-                                        }`,
-                                    },
-                                    entry.content.disabled
-                                        ? "disabled"
-                                        : "enabled"
-                                ),
-                            ]);
-                        }),
+                            ]),
+                            e("tbody", null, [
+                                confEntries
+                                    .filter( (entry) => {
+                                        return entry.name !== "default"
+                                    })
+                                    .map( (entry) => {
+                                        return e("tr", null, [
+                                            e("td", null, entry.name),
+                                            confFieldsArray
+                                                .filter( (field) => { return field !== SECRET_NAME } )
+                                                .map( (field) => {
+                                                        return e("td", null, entry.content[field])
+                                                    }),
+                                            e("td", null, [
+                                                e("p", null, [
+                                                    e("a", { name: entry.name, onClick: handleEdit }, "Edit"),
+                                                    e("span", null, " | "),
+                                                    e("a", { name: entry.name, onClick: handleDelete }, "Delete")
+                                                ]),
+                                            ]),
+                                            e("td", { class:
+                                                `status ${entry.content.disabled ?
+                                                "icon-lock disable-icon enable-text" :
+                                                "enable-icon icon-check enable-text"}`,
+                                                }, entry.content.disabled ? " disabled" : " enabled"),
+                                        ])
+                                    })
+                            ]),
                     ]),
                 ]),
             ]);
         };
 
+
         return e("div", null, [
-            e("h2", null, `${appLabel} Setup Page`),
-            !showForm ? e(NewConfEntryButton, null, null) : null,
-            showForm
-                ? e("div", { class: "setup container" }, [
-                      e("form", { class: "right", onSubmit: handleSubmit }, [
-                          e("div", null, [
-                              e("label", null, [
-                                  "Stanza: ",
-                                  e("input", {
-                                      type: "text",
-                                      name: "stanza",
-                                      value: stanza,
-                                      onChange: handleChange,
-                                  }),
-                              ]),
-                          ]),
-                          confFieldsArray.map((field) => {
-                              return e("label", null, [
-                                  `${
-                                      field[0].toUpperCase() +
-                                      field.substr(1).toLowerCase()
-                                  }: `,
-                                  e("input", {
-                                      type: "text",
-                                      name: field,
-                                      value: conf[field],
-                                      onChange: handleChange,
-                                  }),
-                              ]);
-                          }),
-                          e(
-                              "a",
-                              { href: "#", class: "btn", onClick: toggleForm },
-                              [e("span", null, "Cancel")]
-                          ),
-                          e("input", {
-                              type: "submit",
-                              class: "btn-primary",
-                              value: "Submit",
-                          }),
-                      ]),
-                  ])
-                : null,
-            showTable ? e(ConfEntriesTable, { confEntries }, null) : null,
-            isError
-                ? e("p", null, "Error fetching configuration entries.")
-                : null,
+                    e("h2", null, `${APP_LABEL} Setup Page`),
+                    showForm ?
+                        e("div", null, [
+                            e("form", { onSubmit: handleSubmit }, [
+                                e("div", null, [
+                                    isEditing ?
+                                    e("h3", null, `Editing ${CONF_TYPE} - ${stanza}`)
+                                    :
+                                    e("label", null, [
+                                        "Stanza: ",
+                                        e("input", { type: "text", required: "true", name: "stanza", value: stanza, onChange: handleChange })
+                                    ]),
+                                ]),
+                                confFieldsArray.map( (field) => {
+                                    return e("label", null, [
+                                            `${field[0].toUpperCase() + field.substr(1).toLowerCase()}: `,
+                                                e("input", {
+                                                    type: field === SECRET_NAME ? "password" : "text",
+                                                    name: field,
+                                                    value: conf[field],
+                                                    autocomplete: field === SECRET_NAME ? "off" : "on",
+                                                    onChange: handleChange
+                                                    }
+                                                )
+                                            ])
+                                }),
+                                e("div", null, [
+                                    e("a", { href: "#", class: "btn", onClick: handleCancel }, [
+                                        e("span", null, "Cancel"),
+                                    ]),
+                                    e("input", { type: "submit", class: "btn btn-primary", value: "Submit" }),
+                                ]),
+                            ]),
+                        ])
+                    :
+                        e("div", null, [
+                            e(NewConfEntryButton, null, null),
+                            e(ConfEntriesTable, { confEntries }, null),
+                        ]),
+                e("div", { class:"alert alert-danger" }, [
+                    errorMessage ?
+                        e("p", null, errorMessage)
+                        :
+                        null,
+                ]),
         ]);
     };
 

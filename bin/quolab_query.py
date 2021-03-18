@@ -15,6 +15,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))  # nope
 
 import six
 import requests
+from cypresspoint.datatype import as_bool
+from cypresspoint.searchcommand import ensure_fields
+
+from cypresspoint.spath import splunk_dot_notation
+
 from requests.auth import HTTPBasicAuth
 from splunklib.client import Entity
 from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration, Option, validators
@@ -27,7 +32,6 @@ from http.client import HTTPConnection  # py3
 log = logging.getLogger('urllib3')
 log.setLevel(logging.DEBUG)
 """
-
 
 quolab_classes = {
     'fact': [
@@ -157,75 +161,6 @@ def init():
 init()
 
 
-def sanitize_fieldname(field):
-    clean = re.sub(r'[^A-Za-z0-9_.{}\[\]-]', "_", field)
-    # Remove leading/trailing underscores
-    clean = clean.strip("_")
-    return clean
-
-
-def dict_to_splunk_fields(obj, prefix=()):
-    """
-    Input:  Object   (dict, list, str/int/float)
-    Output:  [  ( (name,name), value) ]
-
-    Convention:  Arrays suffixed with "{}"
-    """
-    output = []
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            key = sanitize_fieldname(key)
-            output.extend(dict_to_splunk_fields(value, prefix=prefix+(key,)))
-    elif isinstance(obj, (list, list)):
-        if prefix:
-            prefix = prefix[:-1] + (prefix[-1] + "{}",)
-            for item in obj:
-                output.extend(dict_to_splunk_fields(item, prefix=prefix))
-    elif isinstance(obj, bool):
-        output.append((prefix, "true" if obj else "false"))
-    elif isinstance(obj, (six.text_type, int, float)) or obj is None:
-        output.append((prefix, obj))
-    else:
-        raise TypeError("Unsupported datatype {}".format(type(obj)))
-    return output
-
-
-def splunk_dot_notation(obj):
-    """
-    Convert json object (python dictionary) into a list of fields as Splunk does by default.
-    Think of this as the same as calling Splunk's "spath" SPL command.
-    """
-    d = {}
-    if not isinstance(obj, dict):
-        raise ValueError("Expected obj to be a dictionary, received {}".format(type(obj)))
-    for field_pair, value in dict_to_splunk_fields(obj):
-        field_name = ".".join(field_pair)
-        if field_name in d:
-            if not isinstance(d[field_name], list):
-                d[field_name] = [d[field_name]]
-            d[field_name].append(value)
-        else:
-            d[field_name] = value
-    return d
-
-
-def ensure_fields(results):
-    """ Ensure that the first result has a placeholder for *ALL* the fields """
-    field_set = set()
-    output = []
-    for result in results:
-        field_set.update(result.keys())
-        output.append(result)
-    if output:
-        # Apply *all* fields to the first result; all other rows are left alone
-        output[0] = {k: output[0].get(k, None) for k in field_set}
-    return output
-
-
-def as_bool(s):
-    return s.lower()[0] in ("t", "y", "e", "1")
-
-
 @Configuration()
 class QuoLabQueryCommand(GeneratingCommand):
     """
@@ -312,7 +247,7 @@ class QuoLabQueryCommand(GeneratingCommand):
 
         # Determine name of stanza to load
         try:
-            api = Entity(self.service, "quolab_servers/quolab_serversendpoint/{}".format(self.server))
+            api = Entity(self.service, "quolab/quolab_servers/{}".format(server_name))
         except Exception:
             self.error_exit("No known server named '{}', check quolab_servers.conf)".format(self.server),
                             "Unknown server named '{}'.  Please update 'server=' option.".format(self.server))

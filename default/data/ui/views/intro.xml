@@ -5,7 +5,9 @@
       <html>
         <h2>Welcome to QuoLab</h2>
         <p/>
-        <b>COOKIECUTTER-TODO:  Add intro text here</b>
+        <p>
+          <b>COOKIECUTTER-TODO:  Add intro text here</b>
+        </p>
 
             Click <a href="configure">here</a> to configure.
         </html>

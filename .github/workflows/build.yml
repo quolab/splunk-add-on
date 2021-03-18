@@ -36,7 +36,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install kintyre-splunk-conf==v0.8-b6
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: TA-quolab package build
+    - name: QuoLab add-on for Splunk package build
       id: buildpkg
       run: |
         set -x
@@ -66,6 +66,6 @@ jobs:
       with:
         # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ${{ steps.buildpkg.outputs.path}}
-        asset_name: ${{ steps.buildpkg.outputs.name}}
+        asset_path: ${{ steps.buildpkg.outputs.path }}
+        asset_name: ${{ steps.buildpkg.outputs.name }}
         asset_content_type: application/gzip
