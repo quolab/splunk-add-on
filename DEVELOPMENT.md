@@ -7,11 +7,11 @@ You can build the QuoLab add on for Splunk using the following steps:
 
 First install:
 
-    ./build.py && $SPLUNK_HOME/bin/splunk install app $(<.release_path)
+    ./build.py && "$SPLUNK_HOME"/bin/splunk install app $(<.release_path)
 
 To quickly reload the app on a local Splunk instance during development:
 
-    ./build.py && $SPLUNK_HOME/bin/splunk install app $(<.release_path) -update 1
+    ./build.py && "$SPLUNK_HOME"/bin/splunk install app $(<.release_path) -update 1
 
 ## Python packages
 
