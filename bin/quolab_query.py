@@ -247,7 +247,7 @@ class QuoLabQueryCommand(GeneratingCommand):
 
         # Determine name of stanza to load
         try:
-            api = Entity(self.service, "quolab/quolab_servers/{}".format(server_name))
+            api = Entity(self.service, "quolab/quolab_servers/{}".format(self.server))
         except Exception:
             self.error_exit("No known server named '{}', check quolab_servers.conf)".format(self.server),
                             "Unknown server named '{}'.  Please update 'server=' option.".format(self.server))
@@ -318,7 +318,7 @@ class QuoLabQueryCommand(GeneratingCommand):
         #   Example:  if limit=501, don't query 3 x 250 records, and then throw away the 249.  Should be able to optimize per-query limit to accommodate.
         query["limit"] = query_limit if query_limit < self.api_fetch_count else self.api_fetch_count
         # Q: What do query results look where max_execution_time has been exceeded?  Any special handling required?
-        query.setdefault("hints", {})["max_execution_time"] = self.api_timeout
+        query.setdefault("hints", {})["timeout"] = self.api_timeout
         i = http_calls = 0
         while True:
             self.logger.debug("Sending query to API:  %r", query)
