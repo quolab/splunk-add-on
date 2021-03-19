@@ -21,7 +21,7 @@ Setup a local virtual environment in the top level of the package to install the
 
 ## Building
 
-You can build the QuoLab add-on for Splunk using the following steps:
+You can build the QuoLab Add-on for Splunk using the following steps:
 
 First install:
 

@@ -1,6 +1,6 @@
 # TA-quolab
 
-_QuoLab add-on for Splunk_
+_QuoLab Add-on for Splunk_
 
 
 [![Build Status](https://github.com/quolab/splunk-add-on/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/quolab/splunk-add-on/actions)

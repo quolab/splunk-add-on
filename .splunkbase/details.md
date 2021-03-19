@@ -1,4 +1,4 @@
-# QuoLab add-on for Splunk
+# QuoLab Add-on for Splunk
 
 ## Introduction
 
