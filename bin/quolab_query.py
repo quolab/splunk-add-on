@@ -17,9 +17,7 @@ import six
 import requests
 from cypresspoint.datatype import as_bool
 from cypresspoint.searchcommand import ensure_fields
-
 from cypresspoint.spath import splunk_dot_notation
-
 from requests.auth import HTTPBasicAuth
 from splunklib.client import Entity
 from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration, Option, validators
@@ -49,7 +47,7 @@ class QuoLabQueryCommand(GeneratingCommand):
     """
     server = Option(
         require=False,
-        default="QuoLab",
+        default="quolab",
         validate=validators.Match("server", "[a-zA-Z0-9._]+"))
 
     output = Option(
@@ -106,7 +104,6 @@ class QuoLabQueryCommand(GeneratingCommand):
         self.api_max_execution_time = None
         self.verify = True
         self.api_secret = None
-        # self._cache = {}
         super(QuoLabQueryCommand, self).__init__()
 
     def prepare(self):
@@ -150,9 +147,12 @@ class QuoLabQueryCommand(GeneratingCommand):
         }
         try:
             response = requests.request("GET", self.api_url, headers=headers, params=query_params)
+        except requests.ConnectionError as e:
+            self.logger.error("Aborting due to API connection failure.  %s", e)
+            return ("QuoLab Connection failure:  {}".format(e), [])
         except Exception:
-            self.logger.exception("Failure while calling QuoLab API")
-            return ("API Call failed", {})
+            self.logger.exception("Failure while calling API")
+            return ("QuoLab API Call failed", [])
         result = response.json()
         if isinstance(result, dict) and "message" in result:
             return ("API returned message:  {}".format(result["message"]), result)
