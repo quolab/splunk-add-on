@@ -322,13 +322,18 @@ class QuoLabQueryCommand(GeneratingCommand):
         i = http_calls = 0
         while True:
             self.logger.debug("Sending query to API:  %r", query)
-            response = session.request(
-                "POST", url,
-                data=json.dumps(query),
-                headers=headers,
-                auth=HTTPBasicAuth(self.api_username, self.api_secret),
-                verify=self.verify)
-            http_calls += 1
+            try:
+                response = session.request(
+                    "POST", url,
+                    data=json.dumps(query),
+                    headers=headers,
+                    auth=HTTPBasicAuth(self.api_username, self.api_secret),
+                    verify=self.verify)
+                http_calls += 1
+            except requests.ConnectionError as e:
+                self.logger.error("QuoLab API failed due to %s", e)
+                self.write_error("QuoLab server connection failed to {}", url)
+                return
 
             if response.status_code >= 400 and response.status_code < 500:
                 body = response.json()
