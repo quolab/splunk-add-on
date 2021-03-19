@@ -3,17 +3,66 @@
     <row>
         <panel>
             <html>
+                <style>
+                table {
+                  border-collapse: collapse;
+                }
+
+                td, th {
+                  border: 1px solid #dddddd;
+                  text-align: left;
+                  padding: 8px;
+                }
+
+                tr:nth-child(even) {
+                  background-color: #dddddd;
+                }
+                </style>
                 <h2>Welcome to QuoLab</h2>
                 <p>
-                    <b>COOKIECUTTER-TODO:  Add intro text here</b>
+                    The QuoLab add-on for Splunk adds a generating command <i>quolabquery</i> that makes search requests to QuoLab servers.
+                    Pull in facts, sysfacts, refs, facets, and more from one or more QuoLab servers.
                 </p>
                 <h3>Configure</h3>
                 <p>
-                    Click <a href="configure">here</a> to configure.
+                    Click <a href="configure">here</a> to configure. You'll need a username and password for a QuoLab server.
                 </p>
-                <h3>Custom search command</h3>
+                <h3>Custom search commands:</h3>
+                <table>
+                    <tr>
+                        <th>Usage</th>
+                        <th>SPL Command</th>
+                    </tr>
+                    <tr>
+                        <td>Query all tags: </td>
+                        <td>
+                            <code>| quolabquery server=my_server field=input</code>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Query for a specific value: </td>
+                        <td>
+                            <code>| quolabquery type=domain value=google.com</code>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Use JSON in a query: </td>
+                        <td>
+                            <code>| quolabquery query="{'source': '1.2.3.4'}"</code>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Write a custom query in JSON: </td>
+                        <td>
+                            <code>| quolabquery query="{'query':{'class':'fact', 'type':'email'}, 'facets':{'document':1, 'refcount':1}, 'hints':{'max_execution_time':0.02}}"</code>
+                        </td>
+                    </tr>
+                </table>
+                <h3>
+                    Tips:
+                </h3>
                 <p>
-                    <tt>quolabquery server=my_server field=input</tt>
+                    Make sure to turn on Splunk's search assistant for syntax hints when writing search queries. <b>Full</b> mode will offer additional information.
                 </p>
             </html>
         </panel>

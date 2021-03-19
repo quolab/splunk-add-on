@@ -1,3 +1,6 @@
-QuoLab add-on for Splunk
+The QuoLab Add-on for Splunk offers an entrypoint into QuoLab's deep forensic insight.
 
-COOKIECUTTER-TODO: Add quick description here.  Text only.  3k max size
+QuoLab empowers security professionals to analyze, investigate and respond to threats within an integrated ecosystem. QuoLab merges deep analytics and intuitive workflows in a collaborative, data-centric platform.
+
+Query your QuoLab catalog from within Splunk using the custom search command provided by the QuoLab add-on for Splunk.
+
