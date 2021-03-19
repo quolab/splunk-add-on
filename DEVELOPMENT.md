@@ -1,23 +1,10 @@
 # Developing TA-quolab
 
-## Building
-
-You can build the QuoLab add on for Splunk using the following steps:
-
-
-First install:
-
-    ./build.py && "$SPLUNK_HOME"/bin/splunk install app $(<.release_path)
-
-To quickly reload the app on a local Splunk instance during development:
-
-    ./build.py && "$SPLUNK_HOME"/bin/splunk install app $(<.release_path) -update 1
 
 ## Python packages
 
-List all externally required Python packages in the `requirements.txt` file.
-These packages are automatically downloaded and extracted into the `lib` folder of the addon during the build process.
-Please be aware of Python 2/3 compatibility concerns when picking external package dependency.
+Externally required Python packages are listed in the [requirements.txt](./requirements.txt) file.
+These packages are automatically downloaded and installed into the `lib` folder of the addon during the build process.
 
 **Gotchas:**  Avoid packages that *only* work on a specific version of Python or has OS-specific compiled libraries.
 Python 2.7 support is going away for more and more packages, so pinning older versions may be required until targeting only Splunk 8+ for compatibility.
@@ -31,10 +18,23 @@ Setup a local virtual environment in the top level of the package to install the
     . venv/bin/activate
     python -m pip install -U -r requirements-dev.txt
 
+
+## Building
+
+You can build the QuoLab add-on for Splunk using the following steps:
+
+First install:
+
+    ./build.py && "$SPLUNK_HOME/bin/splunk" install app "$(<.release_path)"
+
+To quickly reload the app on a local Splunk instance during development:
+
+    ./build.py && "$SPLUNK_HOME/bin/splunk" install app "$(<.release_path)" -update 1
+
+
 ## REST Endpoints
 
 Information available via various REST endpoints:
-
 
 | REST endpoint | Script | Information shown |
 | ------------- | ------ | ----------------- |
@@ -42,7 +42,7 @@ Information available via various REST endpoints:
 | `/servicesNS/-/-/configs/conf-quolab_servers` | N/A (native) | Shows 'secret' as "HIDDEN" |
 | `/servicesNS/-/-/properties/quolab_servers/<name>/secret` | N/A (native) | Shows 'value' as "HIDDEN" |
 | `/servicesNS/-/-/storage/passwords` | N/A (native) | Will show `password` in encrypted form (as stored in `passwords.conf`) and `clear_password` (unencrypted).  Access is restricted to users with the `list_storage_passwords` capability. |
-| `/services/quolab/{ cookiecutter.rest_name }}_secret` | `rest_quolab_servers_secret.py` | Show unencrypted `secret` and is restricted via capabilities.  Uses the scripted rest handler with `passSystemAuth` enabled so that the necessary secret can be obtained without being an admin. |
+| `/services/quolab/quolab_servers_secret` | `rest_quolab_servers_secret.py` | Show unencrypted `secret` and is restricted via capabilities.  Uses the scripted rest handler with `passSystemAuth` enabled so that the necessary secret can be obtained without being an admin. |
 
 To setup a new 'test' configuration stanza from the CLI, run:
 

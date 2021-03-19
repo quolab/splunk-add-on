@@ -17,9 +17,7 @@ import six
 import requests
 from cypresspoint.datatype import as_bool
 from cypresspoint.searchcommand import ensure_fields
-
 from cypresspoint.spath import splunk_dot_notation
-
 from requests.auth import HTTPBasicAuth
 from splunklib.client import Entity
 from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration, Option, validators
