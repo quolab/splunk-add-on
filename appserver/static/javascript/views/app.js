@@ -2,7 +2,7 @@
 
 import * as Config from "./setup_configuration.js";
 
-const APP_LABEL = "QuoLab add-on for Splunk";
+const APP_LABEL = "QuoLab Add-on for Splunk";
 const APP_NAME = "TA-quolab";
 const CONF_TYPE = "Server";
 const PATH = "quolab/quolab_servers";
