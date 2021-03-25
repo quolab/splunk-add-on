@@ -59,7 +59,7 @@ curl -ks -u admin:changeme -X POST \
 
 ### Troubleshooting
 
-Show errors thrown in Admin Manager extension:
+Search for errors thrown in Admin Manager extension:
 
 ```
 index=_internal sourcetype=splunkd ERROR AdminManagerExternal TA-quolab rest_quolab_servers_config.py

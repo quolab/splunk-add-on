@@ -54,7 +54,7 @@
                     <tr>
                         <td>Write a custom query in JSON: </td>
                         <td>
-                            <code>| quolabquery query="{'query':{'class':'fact', 'type':'email'}, 'facets':{'document':1, 'refcount':1}, 'hints':{'max_execution_time':0.02}}"</code>
+                            <code>| quolabquery query="{'query':{'class':'fact', 'type':'email'}, 'facets':{'document':1, 'refcount':1}, 'hints':{'timeout':1.5}}"</code>
                         </td>
                     </tr>
                 </table>

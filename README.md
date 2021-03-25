@@ -29,17 +29,19 @@ Additional details can be found at [here](./.splunkbase/details.md).
 
 Find internal/script errors:
 
-Enable debug logging:
+Enable debug logging by adding `logging_level=DEBUG` to your existing query, like so:
 
 ```
 | quolabquery logging_level=DEBUG query=...
 ```
 
+Search for the above debug logs, or other messages from or about the QuoLab SPL search command:
+
 ```
 index=_internal (source=*quolab.log*) OR (sourcetype=splunkd quolab_query.py)
 ```
 
-Review SPL search command logs:
+Review SPL search command logs group by request:
 
 ```
 index=_internal sourcetype=command:quolabquery | transaction host Pid
