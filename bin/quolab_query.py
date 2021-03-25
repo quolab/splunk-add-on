@@ -165,8 +165,8 @@ class QuoLabQueryCommand(GeneratingCommand):
     ##Syntax
 
     .. code-block::
-        quolabquery type=X value=Y
-        quolabquery type=ip-address value="1.2.3.4, 2.3.4.5"
+        quolabquery type=X id=Y
+        quolabquery type=ip-address id="1.2.3.4, 2.3.4.5"
 
     ##Description
 
@@ -185,7 +185,7 @@ class QuoLabQueryCommand(GeneratingCommand):
         validate=validators.Set(*quolab_types)
     )
 
-    value = Option(
+    id = Option(
         require=False,
         validate=validators.List()
     )
@@ -236,7 +236,7 @@ class QuoLabQueryCommand(GeneratingCommand):
             self.mode = "advanced"
         elif self.type and not self.query:
             self.mode = "simple"
-            # XXX:  Confirm NOT:  self.query and not self.value
+            # XXX:  Confirm NOT:  self.query and not self.id
         else:
             self.write_error("Must provide either 'query' or 'type' but not both")
             sys.exit(1)
@@ -422,8 +422,8 @@ class QuoLabQueryCommand(GeneratingCommand):
                     "type": self.type,
                 }
             }
-            if self.value:
-                query["query"]["id"] = self.value
+            if self.id:
+                query["query"]["id"] = self.id
 
         for order in self.order:
             try:

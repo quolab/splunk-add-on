@@ -14,7 +14,7 @@ Additional details can be found at [here](./.splunkbase/details.md).
 ## Example usage
 
 ```
-| quolabquery type=ip-address value="8.8.8.8, 1.2.3.4"
+| quolabquery type=ip-address id="8.8.8.8, 1.2.3.4"
 
 | quolabquery query="{'query':{'class': 'sysfact', 'type': 'case' },'limit': 15, 'facets': {'display': 1,'tagged': true}}"
 
@@ -22,7 +22,7 @@ Additional details can be found at [here](./.splunkbase/details.md).
 
 | quolabquery query="{'class': 'sysfact', 'type': 'endpoint'}" limit=100 facets="refcount,display"
 
-| quolabquery type=endpoint value=tlsh:tlsh=virtual facets=display
+| quolabquery type=endpoint id=tlsh:tlsh=virtual facets=display
 ```
 
 ## Troubleshooting

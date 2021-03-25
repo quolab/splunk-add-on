@@ -40,9 +40,9 @@
                         </td>
                     </tr>
                     <tr>
-                        <td>Query for a specific value: </td>
+                        <td>Query for a specific id: </td>
                         <td>
-                            <code>| quolabquery type=domain value=google.com</code>
+                            <code>| quolabquery type=domain id=google.com</code>
                         </td>
                     </tr>
                     <tr>

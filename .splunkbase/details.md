@@ -26,8 +26,8 @@ Steps:
      If only a single QuoLab server exists in your environment, name the server `quolab` to simplify your usage later.
      Add as many servers as you need, now or later.
   1. **Confirm that a quolab server is setup correctly** by running the `quolabquery` search to test for a response.
-     For example, run the search `| quolabquery type=ip-address value="8.8.8.8"`.
-     If you created more than one server or named it something other than "quolab", you can test it by running `| quolabquery server=MY-SERVER-NAME type=ip-address value="8.8.8.8"`
+     For example, run the search `| quolabquery type=ip-address id="8.8.8.8"`.
+     If you created more than one server or named it something other than "quolab", you can test it by running `| quolabquery server=MY-SERVER-NAME type=ip-address id="8.8.8.8"`
   1. **Grant authorization** to users who should be allow to run quolabquery.
      Either add users directly to the `quolab_servers_user` role, or inherit that roles from role(s) that already exist within your organization.
      Members of the `admin` role will be able to run this automatically.
@@ -39,7 +39,7 @@ QuoLab users looking to further enrich their investigations can now bring QuoLab
 ### Find a specific domain
 
 ```
-| quolabquery type=domain value=google.com
+| quolabquery type=domain id=google.com
 ```
 
 ### Find facets associated with multiple cases
@@ -85,7 +85,7 @@ In _advanced_ mode you can specify a query in JSON mode so the full power of the
 
 Simple Usage:
 ```
-| quolabquery [server=<server>] type=<quolab-type> [value=<list>]
+| quolabquery [server=<server>] type=<quolab-type> [id=<list>]
 ```
 
 Advanced Usage:
@@ -98,8 +98,8 @@ Parameters:
  * `type=<type>`:  For simple searches, provide one of the QuoLab catalog types here.
     For example: `case`, `endpoint`, or `ip-address`.
     The quolabquery command will determine the correct `class` associated with each `type`.
- * `value=<value>`: For simple searches, this can be used to specify one or more values (`id`s) to search for.
-    To search for multiple values, simply enclose the values in double quotes and separate them with a comma.
+ * `id=<value>`: For simple searches, this can be used to specify one or more values (`id`s) to search for.
+    To search for multiple ids, simply enclose the id in double quotes and separate them with a comma.
  * `query=<json-query>`: In advanced mode, a custom query can be provided in JSON mode.
     To avoid escaping double quotes, the `quolabquery` command accepts a JSON-like syntax that uses single quotes as shown in some of the examples later.
     The query can be top-level query (one that explicitly provides it's own `query` key), or a simpler query where it's assumed that the entire JSON body is the child of the `query` key.  (If none of that made sense to you, start with the simple query.)
@@ -120,8 +120,8 @@ Optional parameters:
 Example searches:
 
 * `| quolabquery server=quolab type=wallet`
-* `| quolabquery type=ip-address value="8.8.8.8, 1.2.3.4"`
-* `| quolabquery type=endpoint value=tlsh:tlsh=virtual facets=display`
+* `| quolabquery type=ip-address id="8.8.8.8, 1.2.3.4"`
+* `| quolabquery type=endpoint id=tlsh:tlsh=virtual facets=display`
 * `| quolabquery query="{'query':{'class': 'sysfact', 'type': 'case' },'limit': 15, 'facets': {'display': 1,'tagged': true}}"`
 * `| quolabquery query="[{'class': 'sysfact', 'type': 'endpoint'}, {'class': 'sysfact', 'type': 'connector'}]" limit=100`
 * `| quolabquery query="{'class': 'sysfact', 'type': 'endpoint'}" limit=100 facets="refcount,display"`
