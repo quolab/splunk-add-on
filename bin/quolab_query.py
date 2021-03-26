@@ -279,6 +279,9 @@ class QuoLabQueryCommand(GeneratingCommand):
         self.api_fetch_count = int(api["max_batch_size"])
         self.api_timeout = int(api["max_execution_time"])
         self.verify = as_bool(api["verify"])
+        if not self.verify:
+            import urllib3
+            urllib3.disable_warnings()
         self.logger.debug("Entity api: %r", self.api_url)
         self.api_secret = api["secret"]
         if not self.api_secret:
