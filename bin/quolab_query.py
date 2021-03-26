@@ -323,10 +323,10 @@ class QuoLabQueryCommand(GeneratingCommand):
             'content-type': "application/json",
             'user-agent': "ta-quolab/{} {}".format(__version__, default_user_agent())
         }
-        # XXX: Revise this logic to better handle query_limit that's within a few % of max_batch_size.
-        #   Example:  if limit=501, don't query 3 x 250 records, and then throw away the 249.  Should be able to optimize per-query limit to accommodate.
-        query["limit"] = query_limit if query_limit < self.api_fetch_count else self.api_fetch_count
-        # Q: What do query results look where max_execution_time has been exceeded?  Any special handling required?
+        # XXX: Per query limit optimization?  Maybe based on type, or number of facets enabled?
+        query["limit"] = min(query_limit, self.api_fetch_count)
+
+        # Q: What do query results look like when time has been exceeded?  Any special handling required?
         query.setdefault("hints", {})["timeout"] = self.api_timeout
         i = http_calls = 0
 
@@ -444,7 +444,8 @@ class QuoLabQueryCommand(GeneratingCommand):
             if self.id:
                 query["query"]["id"] = self.id
 
-        for order in self.order:
+        # Build 'order' structure.   Defaults to 'id' to enable pagination
+        for order in self.order or ["id"]:
             try:
                 self._order_to_dict(order, query)
             except ValueError as e:
