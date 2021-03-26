@@ -6,7 +6,7 @@ _QuoLab Add-on for Splunk_
 
 ## Install
 
-This app is available for download and installation on [Splunkbase](https://splunkbase.splunk.com/apps/#/search/TA-quolab/).
+This app is available for download and installation on [Splunkbase](https://splunkbase.splunk.com/app/5456).
 Additional details can be found at [here](./.splunkbase/details.md).
 
 ## Sourcetypes

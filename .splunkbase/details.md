@@ -34,7 +34,7 @@ Steps:
 
 ## Use cases
 
-QuoLab users looking to further enrich their investigations can now bring QuoLab artifacts into Splunk to leverage Splunk's ecosystem and analytics.
+QuoLab users looking to further enrich their investigations can now bring QuoLab artifacts into Splunk to leverage Splunk's ecosystem and analytics.  See _Combining QuoLab with Splunk_ below for expanded examples.
 
 ### Find a specific domain
 
@@ -149,6 +149,38 @@ HINT: If you're trying to learn the query language, you can use the `quolabquery
 This add-on creates a custom configuration file named `quolab_servers.conf`.
 For security reasons, the secret for each server is stored securely in `passwords.conf` and is encrypted at rest.
 Typically there is no reason to modify these files directly.
+
+
+## Combining QuoLab with Splunk
+
+The real power of the `quolabquery` command is that it can be combined with other Splunk search commands.  We'd love to expand this section to showcase real-life use cases.  Please reach out with with your success stories.  In the meantime, here are some ideas to get you started:
+
+### Capturing Tor descriptors to a lookup using 'outputlookup'
+
+Combining the `quolabquery` command with `outputlookup` allows you to overwrite or append an existing [lookup](https://docs.splunk.com/Documentation/Splunk/8.1.3/Knowledge/Aboutlookupsandfieldactions) table within Splunk.
+
+```
+| quolabquery limit=5000 type=known-as facets=refcount | search fact.type="tor-descriptor"
+| rename fact.* as * | table id type label refcount.*
+| outputlookup quolab_tor_descriptor.csv
+```
+
+### Search for firewall events related to QuoLab cases with a subsearch
+
+This technique uses Splunk's [subsearch](https://docs.splunk.com/Documentation/Splunk/8.1.3/Search/Aboutsubsearches) feature to insert specific fields returned by `quolabquery` command into a dynamic search.  In this example, Splunk looks in the `firewall` index for those ip addresses in the `src_ip` field.
+
+```
+index=firewall [
+    | quolabquery query="{'class': 'sysref', 'type': 'encases', 'target': {'class': 'fact', 'type': 'ip-address'}}" facets="display"
+    | return 1000 src_ip=target.display.label ]
+| table _time, sourcetype, src_ip, src_port, dest_ip, dest_port, action
+```
+
+The final search Splunk executes will look like:
+```
+index=firewall (src_ip="1.2.3.4") OR (src_ip="99.99.99.99") OR ...
+| table _time, sourcetype, src_ip, src_port, dest_ip, dest_port, action
+```
 
 
 ## Source & Licensing
