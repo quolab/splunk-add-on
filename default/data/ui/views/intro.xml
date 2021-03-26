@@ -64,6 +64,9 @@
                 <p>
                     Make sure to turn on Splunk's search assistant for syntax hints when writing search queries. <b>Full</b> mode will offer additional information.
                 </p>
+                <p>
+                    You can find this app's full documentation on <a href="https://github.com/quolab/splunk-add-on/blob/main/.splunkbase/details.md" target="_blank">GitHub</a> and <a href="https://splunkbase.splunk.com/app/5456/#/details" target="_blank">Splunkbase</a>.
+                </p>
             </html>
         </panel>
     </row>
