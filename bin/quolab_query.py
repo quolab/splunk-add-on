@@ -18,7 +18,8 @@ import requests
 from cypresspoint.datatype import as_bool
 from cypresspoint.searchcommand import ensure_fields
 from cypresspoint.spath import splunk_dot_notation
-from requests.auth import HTTPBasicAuth
+from requests.auth import AuthBase, HTTPBasicAuth
+from requests.utils import default_user_agent
 from splunklib.client import Entity
 from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration, Option, validators
 
@@ -157,6 +158,15 @@ def init():
 
 
 init()
+
+
+class QuolabAuth(AuthBase):
+    def __init__(self, token):
+        self._token = token
+
+    def __call__(self, request):
+        request.headers['Authorization'] = "Quoken {}".format(self._token)
+        return request
 
 
 @Configuration()
@@ -311,6 +321,7 @@ class QuoLabQueryCommand(GeneratingCommand):
         url = "{}/v1/catalog/query".format(self.api_url)
         headers = {
             'content-type': "application/json",
+            'user-agent': "ta-quolab/{} {}".format(__version__, default_user_agent())
         }
         # XXX: Revise this logic to better handle query_limit that's within a few % of max_batch_size.
         #   Example:  if limit=501, don't query 3 x 250 records, and then throw away the 249.  Should be able to optimize per-query limit to accommodate.
@@ -318,14 +329,22 @@ class QuoLabQueryCommand(GeneratingCommand):
         # Q: What do query results look where max_execution_time has been exceeded?  Any special handling required?
         query.setdefault("hints", {})["timeout"] = self.api_timeout
         i = http_calls = 0
+
+        if self.api_username == "<TOKEN>":
+            auth = QuolabAuth(self.api_secret)
+        else:
+            auth = HTTPBasicAuth(self.api_username, self.api_secret)
+
         while True:
-            self.logger.debug("Sending query to API:  %r", query)
+            data = json.dumps(query)
+            self.logger.debug("Sending query to API:  %r   headers=%r auth=%s",
+                              data, headers, auth.__class__.__name__)
             try:
                 response = session.request(
                     "POST", url,
-                    data=json.dumps(query),
+                    data=data,
                     headers=headers,
-                    auth=HTTPBasicAuth(self.api_username, self.api_secret),
+                    auth=auth,
                     verify=self.verify)
                 http_calls += 1
             except requests.ConnectionError as e:

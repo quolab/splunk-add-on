@@ -38,7 +38,7 @@ Enable debug logging by adding `logging_level=DEBUG` to your existing query, lik
 Search for the above debug logs, or other messages from or about the QuoLab SPL search command:
 
 ```
-index=_internal (source=*quolab.log*) OR (sourcetype=splunkd quolab_query.py)
+index=_internal (source=*quolabquery.log*) OR (sourcetype=splunkd quolab_query.py)
 ```
 
 Review SPL search command logs group by request:
