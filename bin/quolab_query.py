@@ -240,8 +240,12 @@ class QuoLabQueryCommand(GeneratingCommand):
 
     def prepare(self):
         super(QuoLabQueryCommand, self).prepare()
-        self.logger.info("Launching version %s", __version__)
+        will_execute = bool(self.metadata.searchinfo.sid and
+                            not self.metadata.searchinfo.sid.startswith("searchparsetmp_"))
+        if will_execute:
+            self.logger.info("Launching version %s", __version__)
 
+        # Check required params based on query mode:  simple vs advanced
         if self.query and not self.type:
             self.mode = "advanced"
         elif self.type and not self.query:
@@ -250,6 +254,16 @@ class QuoLabQueryCommand(GeneratingCommand):
         else:
             self.write_error("Must provide either 'query' or 'type' but not both")
             sys.exit(1)
+
+        # Check to see if an unused arguments remain after argument parsing
+        if self.fieldnames:
+            self.write_error("The following arguments to quolabquery are "
+                             "unknown:  {!r}  Please check the syntax.", self.fieldnames)
+            sys.exit(1)
+
+        if not will_execute:
+            # Nothing else can be done/checked in this pre-execution mode
+            return
 
         self.logger.debug("Fetching API endpoint configurations from Splunkd (quolab_servers.conf)")
 
@@ -271,11 +285,6 @@ class QuoLabQueryCommand(GeneratingCommand):
             self.error_exit("Check the configuration.  Unable to fetch data "
                             "from {} without secret.".format(self.api_url),
                             "Missing secret.  Did you run setup?")
-        # Check to see if an unused arguments remain after argument parsing
-        if self.fieldnames:
-            self.write_error("The following arguments to quolabquery are "
-                             "unknown:  {!r}  Please check the syntax.", self.fieldnames)
-            sys.exit(1)
 
     @classmethod
     def _order_to_dict(cls, order_option, query):
