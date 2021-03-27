@@ -62,7 +62,7 @@ curl -ks -u admin:changeme -X POST \
 Search for errors thrown in Admin Manager extension:
 
 ```
-index=_internal sourcetype=splunkd ERROR AdminManagerExternal TA-quolab rest_quolab_servers_config.py
+index=_internal sourcetype=splunkd ERROR AdminManagerExternal OR PersistentScript TA-quolab rest_quolab_servers_config.py
 | eval _raw=replace(_raw, "\\\n", urldecode("%0a"))
 ```
 

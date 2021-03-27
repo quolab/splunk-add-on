@@ -26,6 +26,7 @@ FIELD_NAMES = [
     "max_execution_time",
     "verify"
 ]
+CUSTOM_ACTION = "full"
 
 
 class ConfigApp(admin.MConfigHandler):
@@ -101,8 +102,17 @@ class ConfigApp(admin.MConfigHandler):
                     if key in FIELD_NAMES and val in [None, '']:
                         val = ''
                     confInfo[stanza].append(key, val)
-                    # Fetch encrypted password from storage/passwords
-                    confInfo[stanza].append("secret", self._fetch_secret(stanza))
+                    confInfo[stanza].addCustomAction(CUSTOM_ACTION)
+
+    def handleCustom(self, confInfo):
+        if self.requestedAction == admin.ACTION_LIST and \
+                self.customAction == CUSTOM_ACTION:
+            confDict = self.readConf("quolab_servers")
+            stanza = self.callerArgs.id
+            for key, val in confDict[stanza].items():
+                confInfo[stanza].append(key, val)
+            # Fetch encrypted password from storage/passwords
+            confInfo[stanza].append("secret", self._fetch_secret(stanza))
 
     def handleEdit(self, confInfo):
         '''
@@ -110,9 +120,9 @@ class ConfigApp(admin.MConfigHandler):
         normalize them, and save them somewhere
         '''
         stanza = self.callerArgs.id
-
-        if self.callerArgs.data['url'][0] in [None, '']:
-            self.callerArgs.data['url'][0] = ''
+        for field in FIELD_NAMES:
+            if self.callerArgs.data[field][0] in [None, '']:
+                self.callerArgs.data[field][0] = ''
         # What's the stanza name here?
         if "secret" in self.callerArgs.data:
             self._store_secret(stanza, self.callerArgs.data["secret"][0])

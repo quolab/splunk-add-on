@@ -23,7 +23,7 @@ repos:
     - id: autopep8
 
 - repo: https://github.com/Kintyre/ksconf
-  rev: v0.7.9
+  rev: v0.8.4
   hooks:
     - id: ksconf-check
     - id: ksconf-sort
