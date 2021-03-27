@@ -167,7 +167,7 @@ Combining the `quolabquery` command with `outputlookup` allows you to overwrite 
 
 ### Search for firewall events related to QuoLab cases with a subsearch
 
-This technique uses Splunk's [subsearch](https://docs.splunk.com/Documentation/Splunk/8.1.3/Search/Aboutsubsearches) feature to insert specific fields returned by `quolabquery` command into a dynamic search.  In this example, Splunk looks in the `firewall` index for those ip addresses in the `src_ip` field.
+This technique uses Splunk's [subsearch](https://docs.splunk.com/Documentation/Splunk/8.1.3/Search/Aboutsubsearches) feature to insert specific fields returned by `quolabquery` command into a dynamic search.  In this example, Splunk looks in the `firewall` index for ip addresses in the `src_ip` field.
 
 ```
 index=firewall [
