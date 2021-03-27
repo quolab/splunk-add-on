@@ -44,4 +44,4 @@ If you would like to develop or build this TA from source, see the [development]
  * **API Docs**:  https://....
 
 
-This addon was built from the [Kintyre spl addon](https://github.com/Kintyre/cypress_ta_spl) (version 0.7.1) [cookiecutter](https://github.com/audreyr/cookiecutter) project.
+This addon was built from the [Kintyre spl addon](https://github.com/Kintyre/cypress_ta_spl) (version 0.7.3) [cookiecutter](https://github.com/audreyr/cookiecutter) project.

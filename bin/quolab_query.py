@@ -114,7 +114,7 @@ class QuoLabQueryCommand(GeneratingCommand):
         # Determine name of stanza to load
         server_name = self.server or "default"
         try:
-            api = Entity(self.service, "quolab/quolab_servers/{}".format(server_name))
+            api = Entity(self.service, "quolab/quolab_servers/{}/full".format(server_name))
         except Exception:
             self.error_exit("No known server named '{}', check quolab_servers.conf)".format(self.server),
                             "Check value provided for 'server=' option.")
