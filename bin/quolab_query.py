@@ -20,7 +20,7 @@ from cypresspoint.searchcommand import ensure_fields
 from cypresspoint.spath import splunk_dot_notation
 from requests.auth import AuthBase, HTTPBasicAuth
 from requests.utils import default_user_agent
-from splunklib.client import Entity
+from splunklib.client import Entity, HTTPError
 from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration, Option, validators
 
 
@@ -269,10 +269,13 @@ class QuoLabQueryCommand(GeneratingCommand):
 
         # Determine name of stanza to load
         try:
-            api = Entity(self.service, "quolab/quolab_servers/{}/full".format(server_name))
-        except Exception:
-            self.error_exit("No known server named '{}', check quolab_servers.conf)".format(self.server),
+            api = Entity(self.service, "quolab/quolab_servers/{}/full".format(self.server))
+        except HTTPError:
+            self.error_exit("No known server named '{}', check quolab_servers.conf".format(self.server),
                             "Unknown server named '{}'.  Please update 'server=' option.".format(self.server))
+        except Exception as e:
+            self.logger.exception("Unhandled exception: ")
+            self.write_error("Aborting due to internal error:  {}", e)
 
         self.api_url = api["url"]
         self.api_username = api["username"]
