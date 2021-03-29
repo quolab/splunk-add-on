@@ -71,7 +71,7 @@ Each server contains the following attributes:
 | --------- | -------- | ----------- |
 | `url` | URL | The server name and port where QuoLab API requests will be sent |
 | `username` | String | Name of the QuoLab user account, or `<TOKEN>` if using token-based authentication |
-| `secret` | Password or Token | The password associated with the given `username` or a token |
+| `secret` | Password <br/> or Token | The password associated with the given `username` or a token |
 | `verify` | Boolean | The QuoLab HTTPS listener using a publicly signed certificate.<br/> Please understand the security implications of settings this to `false`.<br/>  This should never be `false` if your QuoLab server is accessed on a public internet connection. |
 | `max_batch_size` | Integer | The maximum number of results that can be fetched in a single query to the API.<br/> If more events are requested at search time then multiple queries will be send to the API<br/> using the supported pagination technique. |
 | `max_execution_time` | Integer | The longest duration in seconds that any individual query may last. |
