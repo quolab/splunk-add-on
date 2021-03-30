@@ -7,9 +7,8 @@ _QuoLab Add-on for Splunk_
 ## Install
 
 This app is available for download and installation on [Splunkbase](https://splunkbase.splunk.com/app/5456).
-Additional details can be found at [here](./.splunkbase/details.md).
+Additional details can be found [here](./.splunkbase/details.md).
 
-## Sourcetypes
 
 ## Example usage
 
@@ -24,6 +23,13 @@ Additional details can be found at [here](./.splunkbase/details.md).
 
 | quolabquery type=endpoint id=tlsh:tlsh=virtual facets=display
 ```
+
+## Sourcetypes
+
+| Sourcetype | Purpose |
+| ---------- | ------- |
+| command:quolabquery | Internal logs and stats related to custom QuoLab SPL command. |
+
 
 ## Troubleshooting
 
@@ -50,6 +56,7 @@ index=_internal sourcetype=command:quolabquery | transaction host Pid
 ## License
 
 TA-quolab is available under the [Apache 2](https://www.apache.org/licenses/LICENSE-2.0) license.
+
 ## Development
 
 If you would like to develop or build this TA from source, see the [development](./DEVELOPMENT.md) documentation.

@@ -1,6 +1,5 @@
 # Developing TA-quolab
 
-
 ## Python packages
 
 Externally required Python packages are listed in the [requirements.txt](./requirements.txt) file.
