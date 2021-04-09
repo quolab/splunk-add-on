@@ -1,0 +1,63 @@
+{
+    "layers": [
+        {
+            "name": "app-python",
+            "layer_name": "20-base",
+            "cookiecutter": {
+                "layer": "20-base",
+                "vendor": "QuoLab",
+                "vendor_product": "QuoLab",
+                "app_folder": "TA-quolab",
+                "app_label": "QuoLab Add-on for Splunk",
+                "build_tool": "GitHub_Actions",
+                "author_splunkid": "kintyre",
+                "author_email": "splunkbase@kintyre.co",
+                "author_company": "Kintyre",
+                "on_splunkbase": true,
+                "splunkbase_id": 5456,
+                "git_repo": "https://github.com/quolab/splunk-add-on",
+                "git_branch": "main",
+                "_template_version": "1.1.0"
+            }
+        },
+        {
+            "name": "custom-conf",
+            "layer_name": "30-conf-quolabservers",
+            "cookiecutter": {
+                "layer": "30-conf-quolabservers",
+                "vendor": "QuoLab",
+                "vendor_product": "QuoLab",
+                "app_folder": "TA-quolab",
+                "app_label": "QuoLab Add-on for Splunk",
+                "need_auth": true,
+                "secret_name": "secret",
+                "conf_name": "quolabservers",
+                "conf_type": "server",
+                "conf_fields": "url,username,max_batch_size,max_execution_time,verify",
+                "rest_name": "quolabservers",
+                "_template_version": "1.1.0"
+            }
+        },
+        {
+            "name": "search-command",
+            "layer_name": "50-spl-quolabquery",
+            "cookiecutter": {
+                "layer": "50-spl-quolabquery",
+                "vendor": "QuoLab",
+                "vendor_product": "QuoLab",
+                "app_folder": "TA-quolab",
+                "app_label": "QuoLab Add-on for Splunk",
+                "author_email": "splunkbase@kintyre.co",
+                "spl_class": "QuoLabQueryCommand",
+                "spl_script": "quolab_query",
+                "spl_command": "quolabquery",
+                "spl_type": "Generating",
+                "need_auth": "True",
+                "conf_name": "quolabservers",
+                "conf_type": "server",
+                "json_output": true,
+                "_template_version": "1.1.0"
+            }
+        }
+    ]
+}
