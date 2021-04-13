@@ -18,10 +18,13 @@ BUILD_FILES = [
 ]
 
 COPY_FILES = [
-    "README.md",
+    "*.md",
     "bin/*.py",
+    "bin.d/",
     "default/",
+    "default.d/",
     "metadata/*.meta",
+    "metadata.d/",
     "static/",
     "lookups/*.csv",
     "appserver/",

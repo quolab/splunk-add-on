@@ -29,3 +29,12 @@ repos:
     - id: ksconf-sort
       exclude: logging\.conf
     - id: ksconf-xml-format
+
+- repo: local
+  hooks:
+    - id: python-unittest
+      name: Run all unit tests for QuoLab Add-on for Splunk
+      language: system
+      entry: python -m unittest discover -s tests
+      types: [ python ]
+      pass_filenames: false

@@ -2,18 +2,15 @@
 
 _QuoLab Add-on for Splunk_
 
+## Example usage
 
-[![Build Status](https://github.com/quolab/splunk-add-on/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/quolab/splunk-add-on/actions)
+QuoLab Add-on for Splunk implements a generating custom SPL search command called `quolabquery`.
 
+```
+| quolabquery type=robot height=tall
 
-## Install
-
-
-
-This app is available for download and installation on [Splunkbase](https://splunkbase.splunk.com/apps/#/search/TA-quolab/).
-Additional details can be found at [here](./.splunkbase/details.md).
-
-
+| quolabquery action=ping target=fancy_pig
+```
 
 ## Sourcetypes
 
@@ -21,19 +18,34 @@ Additional details can be found at [here](./.splunkbase/details.md).
 | ---------- | ------- |
 | command:quolabquery | Internal logs and stats related to custom QuoLab SPL command. |
 
+
 ## Troubleshooting
 
 Find internal/script errors:
+
+### Enable debug logging
+
+Add `logging_level=DEBUG` to your existing query to enable additional debug logs:
+
+```
+| quolabquery logging_level=DEBUG query=...
+```
+
+### Search internal logs
+
+Search for the above debug logs, or other messages from or about the QuoLabSPL search command:
 
 ```
 index=_internal (source=*quolab.log*) OR (sourcetype=splunkd quolab_query.py)
 ```
 
-Review SPL search command logs:
+Review SPL search command logs group by request:
 
 ```
 index=_internal sourcetype=command:quolabquery | transaction host Pid
 ```
+
+## License
 
 ## Development
 
@@ -44,4 +56,4 @@ If you would like to develop or build this TA from source, see the [development]
  * **API Docs**:  https://....
 
 
-This addon was built from the [Kintyre spl addon](https://github.com/Kintyre/cypress_ta_spl) (version 0.7.3) [cookiecutter](https://github.com/audreyr/cookiecutter) project.
+This addon was built from the [Kintyre spl addon](https://github.com/Kintyre/cookiecutter) (version 1.1.0) [cookiecutter](https://github.com/audreyr/cookiecutter) project.

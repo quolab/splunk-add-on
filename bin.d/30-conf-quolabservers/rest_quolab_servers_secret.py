@@ -18,7 +18,7 @@ This rest endpoint safely gets around the above limitations by:
 
 XXX:  Ideally this endpoint should be written as a drop-in replacement for the EAI /quolab/quolab_servers endpoint,
       but hand-coding an EAI endpoint is unlikely to be worth the effort.  So for now, this code ONLY
-      does one thing, and we have extra internal API calls for every invocation of quolabquery.
+      does one thing, and we have extra internal API calls for every invocation.
 
 """
 

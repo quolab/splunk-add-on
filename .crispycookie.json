@@ -17,7 +17,8 @@
                 "splunkbase_id": 5456,
                 "git_repo": "https://github.com/quolab/splunk-add-on",
                 "git_branch": "main",
-                "_template_version": "1.1.0"
+                "_template_version": "1.1.0",
+                "_template": "/Users/lalleman/Sandbox/cypress-cookiecutter/app-python"
             }
         },
         {
@@ -31,11 +32,12 @@
                 "app_label": "QuoLab Add-on for Splunk",
                 "need_auth": true,
                 "secret_name": "secret",
-                "conf_name": "quolabservers",
+                "conf_name": "quolab_servers",
                 "conf_type": "server",
                 "conf_fields": "url,username,max_batch_size,max_execution_time,verify",
-                "rest_name": "quolabservers",
-                "_template_version": "1.1.0"
+                "rest_name": "quolab_servers",
+                "_template_version": "1.1.0",
+                "_template": "/Users/lalleman/Sandbox/cypress-cookiecutter/custom-conf"
             }
         },
         {
@@ -53,10 +55,11 @@
                 "spl_command": "quolabquery",
                 "spl_type": "Generating",
                 "need_auth": "True",
-                "conf_name": "quolabservers",
+                "conf_name": "quolab_servers",
                 "conf_type": "server",
                 "json_output": true,
-                "_template_version": "1.1.0"
+                "_template_version": "1.1.0",
+                "_template": "/Users/lalleman/Sandbox/cypress-cookiecutter/search-command"
             }
         }
     ]

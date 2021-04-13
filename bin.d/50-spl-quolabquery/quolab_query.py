@@ -19,7 +19,6 @@ from cypresspoint.datatype import as_bool
 from cypresspoint.searchcommand import ensure_fields
 from cypresspoint.spath import splunk_dot_notation
 from requests.auth import HTTPBasicAuth
-from splunklib.client import Entity
 from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration, Option, validators
 
 
@@ -97,40 +96,30 @@ class QuoLabQueryCommand(GeneratingCommand):
     """
 
     def __init__(self):
-        # COOKIECUTTER-TODO: initialize these variables as appropriate  (url, username, max_batch_size, max_execution_time, verify)
-        self.api_url = None
-        self.api_username = None
-        self.api_max_batch_size = None
-        self.api_max_execution_time = None
-        self.verify = True
-        self.api_secret = None
         super(QuoLabQueryCommand, self).__init__()
+        # COOKIECUTTER-TODO: initialize any custom variables in __init__()
 
     def prepare(self):
         super(QuoLabQueryCommand, self).prepare()
-        self.logger.info("Launching version %s", __version__)
-        self.logger.debug("Fetching API endpoint configurations from Splunkd (quolab_servers.conf)")
+        # COOKIECUTTER-TODO: Customize or DELETE prepare() - arg validation & REST/CONF fetch
 
-        # Determine name of stanza to load
-        server_name = self.server or "default"
-        try:
-            api = Entity(self.service, "quolab/quolab_servers/{}/full".format(server_name))
-        except Exception:
-            self.error_exit("No known server named '{}', check quolab_servers.conf)".format(self.server),
-                            "Check value provided for 'server=' option.")
+        will_execute = bool(self.metadata.searchinfo.sid and
+                            not self.metadata.searchinfo.sid.startswith("searchparsetmp_"))
+        if will_execute:
+            self.logger.info("Launching version %s", __version__)
 
-        # COOKIECUTTER-TODO: Handle all variables here
+        ''' COOKIECUTTER-TODO: Enable/delete: this block of code will prevent unused/unknown paramaters
+        # Check to see if an unused arguments remain after argument parsing
+        if self.fieldnames:
+            self.write_error("The following arguments to quolabquery are "
+                             "unknown:  {!r}  Please check the syntax.", self.fieldnames)
+            sys.exit(1)
+        '''
+        # COOKIECUTTER-TODO:  Implement argument validation here, if needed
 
-        self.api_url = api["url"]
-        self.api_username = api["username"]
-        self.api_max_batch_size = api["max_batch_size"]
-        self.api_max_execution_time = api["max_execution_time"]
-        self.verify = as_bool(api["verify"])
-        self.logger.debug("Entity api: %r", self.api_url)
-        self.api_secret = api["secret"]
-        if not self.api_secret:
-            self.error_exit("Check the configuration.  Unable to fetch data from {} without secret.".format(self.api_url),
-                            "Missing secret.  Did you run setup?")
+        if not will_execute:
+            return
+        # COOKIECUTTER-TODO:  Add custom REST endpoint/conf snippet here, if needed
 
     def _query_external_api(self, query_string):
         # COOKIECUTTER-TODO: Implement remote QuoLab API query here
@@ -142,7 +131,7 @@ class QuoLabQueryCommand(GeneratingCommand):
         }
         headers = {
             'content-type': "application/json",
-            'x-api-secret': self.api_secret,
+            'x-api-auth': self.api_auth,
             'cache-control': "no-cache"
         }
         try:

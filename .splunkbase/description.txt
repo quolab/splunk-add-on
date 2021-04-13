@@ -1,3 +1,3 @@
 QuoLab Add-on for Splunk
 
-COOKIECUTTER-TODO: Add quick description here.  Text only.  3k max size
+COOKIECUTTER-TODO: Add overview / intro text (3k max size, no formatting)
