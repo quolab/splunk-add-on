@@ -182,6 +182,39 @@ index=firewall (src_ip="1.2.3.4") OR (src_ip="99.99.99.99") OR ...
 | table _time, sourcetype, src_ip, src_port, dest_ip, dest_port, action
 ```
 
+### Check the QuoLab catalog for cases involving threats known to Splunk
+
+This search uses Splunk's `map` command to launch the `quolabquery` command using a template search.  Here is an example where threat ip address (the `src_ip` field in Splunk) is used to check for cases containing that IP address in QuoLab.
+
+```
+index=threat | top 10 src_ip
+| map search="| quolabquery query=\"{'class': 'sysref', 'type': 'encases', 'target': {'class': 'fact', 'type': 'ip-address', 'id': '$src_ip$'}}\" facets=display"
+| eval _time='document.created-at'
+| table _time source.type source.display.label target.display.label document.created-by
+```
+
+Be aware that there are many limitations to the use of the Splunk `map` command.  This approach is not very efficient or scalable, it requires escaping the search string, and any `src_ip` on the input that doesn't match in the QuoLab catalog is dropped from the output.  These are all standard limitations of `map`.  If augmenting Splunk data with QuoLab catalog data is an important use case for you please contact us.  A future lookup-like search command has been considered, hearing from you will help with prioritizing new features.
+
+### Collect recent QuoLab cases in a Splunk index
+
+QuoLab Add-On for Splunk doesn't natively support sending QuoLab catalog data into a Splunk index, it can be done relatively easily using a [summary index](https://docs.splunk.com/Splexicon:Summaryindex) technique.   Here is an example that will find any cases updated within the last day and send selected fields to a summary index for later searches in Splunk.
+
+If this is a use case you find yourself using frequently, please reach out.  There's several inherit limitations of this approach and gotchas with summary indexing, especially around timing.  Let us know if natively supporting this would be a valuable feature.
+
+```
+| quolabquery type=case limit=1000
+| where 'document.updated-at' > relative_time(now(), "-1d@d")
+| table class, type, id, document.type, document.name, document.priority, document.created-by, document.created-at, document.updated-at, document.created-by
+| eval _time='document.updated-at'
+| collect index=summary source=quolab-cases
+```
+
+This data can then be searched in Splunk by running the query:
+
+```
+index=summary source=quolab-cases
+```
+
 
 ## Source & Licensing
 
