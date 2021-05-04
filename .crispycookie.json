@@ -128,6 +128,51 @@
                 "_template_version": "1.4.7",
                 "_template": "git@github.com:Kintyre/cypress-cookiecutter.git/search-command"
             }
+        },
+        {
+            "name": "modinput-rest",
+            "layer_name": "50-modinput-timeline",
+            "cookiecutter":{
+                "layer":                "50-modinput-timeline",
+                "modinput_name":        "quolab_timeline",
+                "modinput_class":       "QuoLabTimelineModularInput",
+                "modinput_sourcetype":  "quolab:timeline",
+                "modinput_sourcetype_int" : "quolab:modinput:timeline",
+                "uses_state_tracking":  true,
+                "is_metrics":           false,
+                "is_json":              true,
+                "auth_type":            "basic",
+                "modinput_fields": {
+                    "timeline": {
+                        "type": "string",
+                        "required": true,
+                        "description": "GUID of timeline in QuoLab"
+                    },
+                    "backfill_range": {
+                        "label": "Backfill range",
+                        "type": "relative-time",
+                        "default": "5d",
+                        "required": false,
+                        "example": ["5d", "3h", "10m"],
+                        "help": "Duration of backfill on first run."
+                    },
+                    "batch_size": {
+                        "type": "int",
+                        "label": "Batch size",
+                        "description": "Number of events to fetch per HTTPS call",
+                        "default": 1000
+                    },
+                    "log_level": {
+                        "default": "INFO",
+                        "required": true,
+                        "description": "Logging level for internal logging",
+                        "validation": {
+                            "type": "choices",
+                            "value": ["DEBUG", "INFO", "WARN", "ERROR"]
+                        }
+                    }
+                }
+            }
         }
     ],
     "tool_info": {
