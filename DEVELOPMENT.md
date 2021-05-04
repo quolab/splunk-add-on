@@ -53,7 +53,7 @@ This `curl` command creates a new 'quolab' configuration stanza:
 curl -ks -u admin:changeme -X POST \
     https://127.0.0.1:8089/servicesNS/nobody/TA-quolab/quolab/quolab_servers/quolab \
     -d url="https://example.server.com:1080/service"\
-    -d user="jdoe"\
+    -d username="jdoe"\
     -d secret="HIDDEN"\
     -d max_batch_size="500"\
     -d max_execution_time="300"\

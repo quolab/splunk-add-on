@@ -44,7 +44,7 @@ FIELD_CONFIG = json.loads(r"""[
     "example": "jdoe",
     "help": "Username can be a regular user account name, or 'TOKEN' when using token-based authentication.",
     "label": "Username",
-    "name": "user",
+    "name": "username",
     "required": true,
     "type": "string",
     "validation": {
