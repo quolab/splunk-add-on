@@ -3,7 +3,7 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-__version__ = "0.9.1"
+__version__ = "0.10.0"
 
 import os
 import sys
