@@ -48,7 +48,7 @@ def package_spl(step):
     step.run(sys.executable, "-m", "ksconf", "package",
              "--file", step.dist_path / SPL_NAME,   # Path to created tarball
              "--app-name", APP_FOLDER,              # Top-level directory name
-             "--layer-method", "disable",           # Simple app, no layers
+             "--layer-method", "dir.d",             # Simple app, no layers
              "--block-local",                       # Never have a 'local' folder at build time
              "--blocklist", "requirements.txt",     # No need to distribute this in the app
              "--release-file", str(release_path),
