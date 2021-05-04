@@ -6,18 +6,123 @@ const APP_LABEL = "QuoLab Add-on for Splunk";
 const APP_NAME = "TA-quolab";
 const CONF_TYPE = "Server";
 const PATH = "quolab/quolab_servers";
-const SECRET_NAME = "secret";
+const SECRET_FIELD = "secret";
 
-const confFieldsArray = [
-    "url",
-    "username",
-    "max_batch_size",
-    "max_execution_time",
-    "verify"
-].concat(SECRET_NAME);
-const confFieldsObject = Object.assign(...confFieldsArray.map(key => ({ [key]: "" })));
+const confFields = [
+    {
+    "description": "The server name and port where QuoLab API requests will be sent",
+    "display": {
+        "class": "input-xlarge"
+    },
+    "example": "https://example.server.com:1080/service",
+    "help": "This is the same URL used for accessing the QuoLab web user interface",
+    "label": "URL",
+    "name": "url",
+    "required": true,
+    "type": "url",
+    "validation": {
+        "type": "regex",
+        "value": "^https?://[^\\s]+$"
+    }
+}
+    ,
+    {
+    "description": "Username for the QuoLab server.",
+    "example": "jdoe",
+    "help": "Username can be a regular user account name, or 'TOKEN' when using token-based authentication.",
+    "label": "Username",
+    "name": "user",
+    "required": true,
+    "type": "string",
+    "validation": {
+        "type": "regex",
+        "value": "^[\\w_.-]+$"
+    }
+}
+    ,
+    {
+    "default": "HIDDEN",
+    "description": "The password associated with the given username or a token",
+    "display": {
+        "hidden": true
+    },
+    "label": "Password",
+    "name": "secret",
+    "required": true,
+    "type": "secret"
+}
+    ,
+    {
+    "default": true,
+    "description": "Use HTTPS certificate validation",
+    "help": "The QuoLab HTTPS listener using a publicly signed certificate.  Please understand the security implications of settings this to false.  This should never be false if your QuoLab server is accessed on a public internet connection.",
+    "label": "Verify",
+    "name": "verify",
+    "required": false,
+    "type": "bool"
+}
+    ,
+    {
+    "default": 500,
+    "description": "Number of catalog items to fetch per HTTP call",
+    "help": "The maximum number of results that can be fetched in a single query to the API.  If more events are requested at search time then multiple queries will be sent to the API using the supported pagination technique.",
+    "label": "Max Batch Size",
+    "name": "max_batch_size",
+    "required": true,
+    "type": "int"
+}
+    ,
+    {
+    "default": 300,
+    "description": "The longest duration in seconds that any individual query may last.",
+    "label": "Max Execution Time",
+    "name": "max_execution_time",
+    "required": true,
+    "type": "int"
+}
+    ,
+    {
+    "default": false,
+    "description": "Toggle configuration entry status",
+    "label": "Disabled",
+    "name": "disabled",
+    "required": false,
+    "type": "bool"
+}
+
+];
+const confFieldsObject = Object.assign(...confFields.map(key => ({ [key["name"]]: "" })));
+const confFieldsArray = Object.keys(confFieldsObject);
 const defaultStanzaName = "quolab";
 const namespace = { owner: "nobody", app: APP_NAME, sharing: "app" };
+
+const normalizeBoolean = (test) => {
+    // Taken from splunkjs SDK (Apache license v2) Copyright 2011 Splunk, Inc.
+    if (typeof(test) == 'string') {
+        test = test.toLowerCase();
+    }
+
+    switch (test) {
+        case true:
+        case 1:
+        case '1':
+        case 'yes':
+        case 'on':
+        case 'true':
+            return true;
+
+        case false:
+        case 0:
+        case '0':
+        case 'no':
+        case 'off':
+        case 'false':
+            return false;
+
+        default:
+            return test;
+    }
+};
 
 const resolveSDKError = async (error) => {
     if (typeof(error) == "string" ) return error;
@@ -84,7 +189,6 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
             const http = new splunkjs.SplunkWebHttp();
             const service = new splunkjs.Service(http, namespace);
             const { stanza,  ...properties } = setupOptions;
-
             await update_configuration_data(service, stanza, properties);
 
             if (shouldRunUpdate) {
@@ -113,19 +217,18 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
             const confEntryJSON = await collection.get("", {});
             const confEntryData = await JSON.parse(confEntryJSON);
             const { entry } = confEntryData;
+            entry.forEach( (item) => {
+                item.content.disabled = normalizeBoolean(item.content.disabled);
+            });
 
-            // eventually remove this:
-            const sanitizedEntries = entry.map((item) => {
-                delete item.content[SECRET_NAME];
-                return item;
-             });
-
-            return sanitizedEntries;
+            return entry;
         } catch (error) {
             const resolvedError = await resolveSDKError(error);
             throw new Error(`Error getting configuration entries: ${resolvedError}`);
         }
     }
+
+
 
     const deleteConfEntry = async (name) => {
         try {
@@ -168,7 +271,8 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
                     const entries = await getConfEntries();
 
                     let defaultObject = entries.filter( (entry) => entry.name === "default")[0];
-                    defaultObject.content[SECRET_NAME] == "";
+                    defaultObject.content[SECRET_FIELD] = "";
+
                     const nonDefaults = entries.filter( (entry) => entry.name !== "default");
 
                     setDefaultEntry(defaultObject);
@@ -216,7 +320,6 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
             const { name } = event.target;
             setStanza(name);
             let conf = confEntries.find(entry => entry.name === name).content;
-            delete conf[SECRET_NAME];
             setConf(conf);
         };
 
@@ -276,7 +379,8 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
                                 e("tr", null, [
                                     e("th", { class: "sorts active" }, "Name"),
                                     confFieldsArray
-                                        .filter( (field) => { return field !== SECRET_NAME } )
+                                        .filter( (field) => { return field !== SECRET_FIELD } )
+                                        .filter( (field) => { return field !== "disabled" } )
                                         .map( (field) => {
                                             return e("th", { class: "sorts" }, `${field[0].toUpperCase() + field.substr(1).toLowerCase()} `)
                                     }),
@@ -293,7 +397,8 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
                                         return e("tr", null, [
                                             e("td", null, entry.name),
                                             confFieldsArray
-                                                .filter( (field) => { return field !== SECRET_NAME } )
+                                                .filter( (field) => { return field !== SECRET_FIELD } )
+                                                .filter( (field) => { return field !== "disabled" } )
                                                 .map( (field) => {
                                                         return e("td", null, entry.content[field])
                                                     }),
@@ -320,35 +425,45 @@ define(["react", "splunkjs/splunk"], (react, splunkjs) => {
         return e("div", null, [
                     e("h2", null, `${APP_LABEL} Setup Page`),
                     showForm ?
-                        e("div", null, [
-                            e("form", { onSubmit: handleSubmit }, [
-                                e("div", null, [
-                                    isEditing ?
-                                    e("h3", null, `Editing ${CONF_TYPE} - ${stanza}`)
-                                    :
-                                    e("label", null, [
-                                        "Stanza: ",
-                                        e("input", { type: "text", required: "true", name: "stanza", value: stanza, onChange: handleChange })
+                        e("div", { class: "inputForm form-horizontal" }, [
+                            e("form", { class: "inputform_wrapper", onSubmit: handleSubmit }, [
+                                e("div", { class: "control-group shared-controls-controlgroup control-group-default" }, [
+                                    e("div", { class: "controls" }, [
+                                        e("div", { class: ""}, [
+                                            isEditing ?
+                                            e("h3", null, `Editing ${CONF_TYPE} - ${stanza}`)
+                                            :
+                                            e("div", null, [
+                                                e("label", { class: "control-label" }, "Stanza"),
+                                                e("input", { type: "text", required: "true", name: "stanza", value: stanza, onChange: handleChange })
+                                            ]),
+                                        ]),
+                                        confFields
+                                        .filter( (field) => { return field.name !== "disabled" } )
+                                        .map( (field) => {
+                                            return e("div", {class:""}, [
+                                                        e("label", { class: "control-label" }, field.label),
+                                                        e("div", { class: "control input-append shared-controls-textbrowsecontrol control-default"}, [
+                                                            e("input", {
+                                                                autocomplete: field.type == "secret" ? "off" : "on",
+                                                                name: field.name,
+                                                                onChange: handleChange,
+                                                                placeholder: field.example || "",
+                                                                required: field.required,
+                                                                type: field.type == "secret" ? "password" : "text",
+                                                                value: conf[field.name],
+                                                            }),
+                                                        ]),
+                                                        e("div", { class: "help-block"}, `${field.help || ""}`)
+                                                    ])
+                                        }),
+                                        e("div", null, [
+                                            e("a", { href: "#", class: "btn", onClick: handleCancel }, [
+                                                e("span", null, "Cancel"),
+                                            ]),
+                                            e("input", { type: "submit", class: "btn btn-primary", value: "Submit" }),
+                                        ]),
                                     ]),
-                                ]),
-                                confFieldsArray.map( (field) => {
-                                    return e("label", null, [
-                                            `${field[0].toUpperCase() + field.substr(1).toLowerCase()}: `,
-                                                e("input", {
-                                                    type: field === SECRET_NAME ? "password" : "text",
-                                                    name: field,
-                                                    value: conf[field],
-                                                    autocomplete: field === SECRET_NAME ? "off" : "on",
-                                                    onChange: handleChange
-                                                    }
-                                                )
-                                            ])
-                                }),
-                                e("div", null, [
-                                    e("a", { href: "#", class: "btn", onClick: handleCancel }, [
-                                        e("span", null, "Cancel"),
-                                    ]),
-                                    e("input", { type: "submit", class: "btn btn-primary", value: "Submit" }),
                                 ]),
                             ]),
                         ])
