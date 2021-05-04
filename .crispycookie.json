@@ -132,16 +132,16 @@
         {
             "name": "modinput-rest",
             "layer_name": "50-modinput-timeline",
-            "cookiecutter":{
-                "layer":                "50-modinput-timeline",
-                "modinput_name":        "quolab_timeline",
-                "modinput_class":       "QuoLabTimelineModularInput",
-                "modinput_sourcetype":  "quolab:timeline",
-                "modinput_sourcetype_int" : "quolab:modinput:timeline",
-                "uses_state_tracking":  true,
-                "is_metrics":           false,
-                "is_json":              true,
-                "auth_type":            "basic",
+            "cookiecutter": {
+                "layer": "50-modinput-timeline",
+                "modinput_name": "quolab_timeline",
+                "modinput_class": "QuoLabTimelineModularInput",
+                "modinput_sourcetype": "quolab:timeline",
+                "modinput_sourcetype_int": "quolab:modinput:timeline",
+                "uses_state_tracking": true,
+                "is_metrics": false,
+                "is_json": true,
+                "auth_type": "basic",
                 "modinput_fields": {
                     "timeline": {
                         "type": "string",
@@ -153,7 +153,11 @@
                         "type": "relative-time",
                         "default": "5d",
                         "required": false,
-                        "example": ["5d", "3h", "10m"],
+                        "example": [
+                            "5d",
+                            "3h",
+                            "10m"
+                        ],
                         "help": "Duration of backfill on first run."
                     },
                     "batch_size": {
@@ -168,10 +172,17 @@
                         "description": "Logging level for internal logging",
                         "validation": {
                             "type": "choices",
-                            "value": ["DEBUG", "INFO", "WARN", "ERROR"]
+                            "value": [
+                                "DEBUG",
+                                "INFO",
+                                "WARN",
+                                "ERROR"
+                            ]
                         }
                     }
-                }
+                },
+                "_template": "git@github.com:Kintyre/cypress-cookiecutter.git/modinput-rest",
+                "_template_version": "1.4.7"
             }
         }
     ],
