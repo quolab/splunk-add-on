@@ -68,7 +68,7 @@ class YourCustomSearchCommand:
 
         self.api_url = None
 
-        self.api_user = None
+        self.api_username = None
 
         self.api_secret = "HIDDEN"
 
@@ -96,7 +96,7 @@ class YourCustomSearchCommand:
         # COOKIECUTTER-TODO: Handle all variables here
 
         self.api_url = api["url"]
-        self.api_user = api["user"]
+        self.api_username = api["username"]
         self.api_verify = as_bool(api["verify"])
         self.api_max_batch_size = int(api["max_batch_size"])
         self.api_max_execution_time = int(api["max_execution_time"])

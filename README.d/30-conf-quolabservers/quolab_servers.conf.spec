@@ -5,7 +5,7 @@ url = <url>
 * The server name and port where QuoLab API requests will be sent
 * Example: https://example.server.com:1080/service
 * (required)
-user = <string>
+username = <string>
 * Username for the QuoLab server.
 * Example: jdoe
 * (required)

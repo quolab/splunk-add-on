@@ -1,9 +1,0 @@
-[commands]
-access = read : [ * ], write : [ admin, sc_admin ]
-export = system
-
-[commands/quolabquery]
-access = read : [ role_quolab_servers_user ], write : [ admin, sc_admin ]
-
-[searchbnf]
-export = system
