@@ -51,7 +51,7 @@
                             "value": "^https?://[^\\s]+$"
                         }
                     },
-                    "user": {
+                    "username": {
                         "label": "Username",
                         "type": "string",
                         "required": true,
