@@ -28,6 +28,7 @@ COPY_FILES = [
     "static/",
     "lookups/*.csv",
     "appserver/",
+    "README.d/",
     "README/*.spec",
 ] + BUILD_FILES
 

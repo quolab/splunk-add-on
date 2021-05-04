@@ -1,10 +1,10 @@
 # Version pinning for consistent builds
 
 six==1.15.0
-cypresspoint==0.2.0
+cypresspoint==0.4.1
 splunk-sdk==1.6.15
 requests==2.25.1
 
-# COOKIECUTTER-TODO:  DEVELOPER INPUT NEEDED:   List the required Python libraries
+# COOKIECUTTER-TODO: List the required Python libraries
 #pytz>=2020.5
 #python-dateutil==2.8.1

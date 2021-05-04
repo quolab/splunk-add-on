@@ -45,6 +45,7 @@ class YourModularInput:
         for input_name, input_item in inputs.inputs.items():
 
             # Add the following to your code -->
+
             server_name = input_item["server"]
             # Load reference content from quolab_servers.conf
             server = self.fetch_quolab_servers(self, server_name)
@@ -64,12 +65,20 @@ class YourCustomSearchCommand:
 
     def __init__(self):
         # Set defaults for quolab_servers server
+
         self.api_url = None
-        self.api_username = None
-        self.api_max_batch_size = None
-        self.api_max_execution_time = None
-        self.verify = True
-        self.api_secret = None
+
+        self.api_user = None
+
+        self.api_secret = "HIDDEN"
+
+        self.api_verify = True
+
+        self.api_max_batch_size = 500
+
+        self.api_max_execution_time = 300
+
+        self.api_disabled = False
 
     def prepare(self):
         # Put this at the END of your prepare() method
@@ -87,10 +96,12 @@ class YourCustomSearchCommand:
         # COOKIECUTTER-TODO: Handle all variables here
 
         self.api_url = api["url"]
-        self.api_username = api["username"]
-        self.api_max_batch_size = api["max_batch_size"]
-        self.api_max_execution_time = api["max_execution_time"]
-        self.verify = as_bool(api["verify"])
+        self.api_user = api["user"]
+        self.api_verify = as_bool(api["verify"])
+        self.api_max_batch_size = int(api["max_batch_size"])
+        self.api_max_execution_time = int(api["max_execution_time"])
+        self.api_disabled = as_bool(api["disabled"])
+
         self.logger.debug("Entity api: %r", self.api_url)
         self.api_secret = api["secret"]
         if not self.api_secret:

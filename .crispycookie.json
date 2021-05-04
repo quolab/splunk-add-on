@@ -17,8 +17,8 @@
                 "splunkbase_id": 5456,
                 "git_repo": "https://github.com/quolab/splunk-add-on",
                 "git_branch": "main",
-                "_template_version": "1.1.0",
-                "_template": "/Users/lalleman/Sandbox/cypress-cookiecutter/app-python"
+                "_template_version": "1.4.7",
+                "_template": "git@github.com:Kintyre/cypress-cookiecutter.git/app-python"
             }
         },
         {
@@ -43,8 +43,13 @@
                         "example": "https://example.server.com:1080/service",
                         "description": "The server name and port where QuoLab API requests will be sent",
                         "help": "This is the same URL used for accessing the QuoLab web user interface",
-                        "display": { "class": "input-xlarge"},
-                        "validation": { "type": "regex", "value": "^https?://[^\\s]+$" }
+                        "display": {
+                            "class": "input-xlarge"
+                        },
+                        "validation": {
+                            "type": "regex",
+                            "value": "^https?://[^\\s]+$"
+                        }
                     },
                     "user": {
                         "label": "Username",
@@ -53,13 +58,18 @@
                         "example": "jdoe",
                         "description": "Username for the QuoLab server.",
                         "help": "Username can be a regular user account name, or 'TOKEN' when using token-based authentication.",
-                        "validation": { "type": "regex", "value": "^[\\w_.-]+$" }
+                        "validation": {
+                            "type": "regex",
+                            "value": "^[\\w_.-]+$"
+                        }
                     },
                     "secret": {
                         "default": "HIDDEN",
                         "label": "Password",
                         "type": "secret",
-                        "display": {"hidden": true},
+                        "display": {
+                            "hidden": true
+                        },
                         "required": true,
                         "description": "The password associated with the given username or a token"
                     },
@@ -92,8 +102,9 @@
                         "description": "Toggle configuration entry status"
                     }
                 },
-                "_template_version": "1.1.0",
-                "_template": "/Users/lalleman/Sandbox/cypress-cookiecutter/custom-conf"
+                "_template_version": "1.4.7",
+                "_template": "git@github.com:Kintyre/cypress-cookiecutter.git/custom-conf",
+                "custom_action": "full"
             }
         },
         {
@@ -114,9 +125,13 @@
                 "conf_name": "quolab_servers",
                 "conf_type": "server",
                 "json_output": true,
-                "_template_version": "1.1.0",
-                "_template": "/Users/lalleman/Sandbox/cypress-cookiecutter/search-command"
+                "_template_version": "1.4.7",
+                "_template": "git@github.com:Kintyre/cypress-cookiecutter.git/search-command"
             }
         }
-    ]
+    ],
+    "tool_info": {
+        "program": "CrispyCookie",
+        "version": "0.3.3"
+    }
 }
