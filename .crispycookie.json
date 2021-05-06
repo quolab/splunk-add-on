@@ -145,7 +145,7 @@
                 "modinput_fields": {
                     "server": {
                         "type": "string",
-                        "required": "true",
+                        "required": true,
                         "default": "quolab",
                         "description": "Name of QuoLab server",
                         "help": "Stanza name of the QuoLab server stored in quolab_servers.conf",

@@ -118,29 +118,29 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
         scheme.use_external_validation = True
 
         scheme.add_argument(
+            Argument("server",
+                     title="Server",
+                     description="Name of QuoLab server",
+
+                     data_type=Argument.data_type_string,
+                     required_on_create=True
+
+                     ))
+        scheme.add_argument(
             Argument("timeline",
                      title="Timeline",
-                     description="GUID of timeline in QuoLab",
+                     description="Timeline id from QuoLab",
 
                      data_type=Argument.data_type_string,
                      required_on_create=True
 
                      ))
         scheme.add_argument(
-            Argument("backfill_range",
-                     title="Backfill range",
-                     description="Duration of backfill on first run.",
+            Argument("backfill",
+                     title="Enable Backfill",
+                     description="If enabled, the first run will retrieve all existing events from the queue",
 
-                     data_type=Argument.data_type_string,
-                     ))
-        scheme.add_argument(
-            Argument("batch_size",
-                     title="Batch size",
-                     description="Number of events to fetch per HTTPS call",
-
-                     data_type=Argument.data_type_number,
-                     required_on_create=True
-
+                     data_type=Argument.data_type_boolean,
                      ))
         scheme.add_argument(
             Argument("log_level",
@@ -187,9 +187,9 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
             # Monkey patch!
             app = input_item["__app"]
 
+            server = input_item['server']
             timeline = input_item['timeline']
-            backfill_range = input_item['backfill_range']
-            batch_size = int(input_item['batch_size'])
+            backfill = as_bool(input_item['backfill'])
             log_level = input_item['log_level']
             # COOKIECUTTER-TODO:  Handle secret, like so, when using a script with a simple secret
             # token = self.handle_secret(input_name, input_item["token"], app)

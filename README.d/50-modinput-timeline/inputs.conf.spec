@@ -1,17 +1,16 @@
 [quolab_timeline://]
 
+server = <string>
+* Name of QuoLab server
+* Default: quolab
+* (required)
 timeline = <string>
-* GUID of timeline in QuoLab
+* Timeline id from QuoLab
 * (required)
-backfill_range = <relative-time>
-* Duration of backfill on first run.
-* Default: 5d
-* Example: ['5d', '3h', '10m']
+backfill = <bool>
+* If enabled, the first run will retrieve all existing events from the queue
+* Default: True
 * (optional)
-batch_size = <int>
-* Number of events to fetch per HTTPS call
-* Default: 1000
-* (required)
 log_level = <string>
 * Logging level for internal logging
 * Choices: DEBUG, INFO, WARN, ERROR
