@@ -143,28 +143,29 @@
                 "is_json": true,
                 "auth_type": "basic",
                 "modinput_fields": {
+                    "server": {
+                        "type": "string",
+                        "required": "true",
+                        "default": "quolab",
+                        "description": "Name of QuoLab server",
+                        "help": "Stanza name of the QuoLab server stored in quolab_servers.conf",
+                        "reference": {
+                            "type": "rest",
+                            "rest": "/quolab/quolab_servers"
+                        }
+                    },
                     "timeline": {
                         "type": "string",
                         "required": true,
-                        "description": "GUID of timeline in QuoLab"
+                        "description": "Timeline id from QuoLab",
+                        "help": "TODO:  Describe how users can find this ID from the QuoLab user interface.   For now, navigate to /v1/timeline from your browser."
                     },
-                    "backfill_range": {
-                        "label": "Backfill range",
-                        "type": "relative-time",
-                        "default": "5d",
+                    "backfill": {
+                        "label": "Enable Backfill",
+                        "type": "bool",
+                        "default": true,
                         "required": false,
-                        "example": [
-                            "5d",
-                            "3h",
-                            "10m"
-                        ],
-                        "help": "Duration of backfill on first run."
-                    },
-                    "batch_size": {
-                        "type": "int",
-                        "label": "Batch size",
-                        "description": "Number of events to fetch per HTTPS call",
-                        "default": 1000
+                        "description": "If enabled, the first run will retrieve all existing events from the queue"
                     },
                     "log_level": {
                         "default": "INFO",
