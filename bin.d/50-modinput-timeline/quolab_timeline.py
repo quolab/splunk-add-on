@@ -3,7 +3,6 @@ Modular Input for stuff
 """
 from __future__ import absolute_import, print_function, unicode_literals
 
-__version__ = "0.1.0"
 
 import os
 import sys
@@ -40,74 +39,6 @@ DEBUG = True
 setup_logging(
     os.path.join(os.environ['SPLUNK_HOME'], "var", "log", "splunk", "quolab_timeline.log"),
     debug=DEBUG)
-
-
-class QuoLabAPI(object):
-    base_url = "https://{subdomain}.DOMAIN.com"
-    base_headers = {
-        "Accept": "application/json",
-    }
-
-    def __init__(self, subdomain, verify=None):
-        self.subdomain = subdomain
-        self.session = requests.Session()
-        self.token = None
-        self.username = None
-        self.password = None
-        self.verify = verify
-        self.url = self.base_url.format(subdomain=subdomain)
-        if verify is False:
-            import urllib3
-            urllib3.disable_warnings()
-            logger.info("SSL Certificate validation has been disabled.")
-
-    def login(self, username, password):
-        self.username = username
-        self.password = password
-
-        # Trivial endpoint used to simply validate connectivity and authentication
-
-        r = self._call("GET", "/api/v2/users/me.json")
-        if r.status_code >= 200 and r.status_code <= 299:
-            logger.info("Login successful to %s as %s.  status_code=%d", r.url,
-                        r.json()["user"]["name"], r.status_code)
-        if r.status_code >= 400:
-            logger.error("Error during login.  status_code=%d", r.status_code)
-            logger.error("Error during login.  %s  %s", r.json()["error"], r.json()["description"])
-        return False
-
-    def login_token(self, username, token):
-        return self.login(username + "/token", token)
-
-    def _call(self, method, partial_url, params=None, data=None, headers=None):
-        h = dict(self.base_headers)
-        if headers is not None:
-            h.update(headers)
-        # print("Headers:  {!r}".format(headers))
-        r = self.session.request(method, self.url + partial_url, params, data, h,
-                                 auth=HTTPBasicAuth(self.username, self.password),
-                                 verify=self.verify)
-        return r
-
-    def _paginated_call(self, session, method, partial_url, params=None, data=None, headers=None):
-        h = dict(self.base_headers)
-        if headers is not None:
-            h.update(headers)
-        session.request(method, self.url + partial_url, params=params, data=data, headers=h,
-                        auth=HTTPBasicAuth(self.username, self.password),
-                        verify=self.verify)
-
-    def get_data(self):
-        # DEVELOPER:  PUT YOUR CODE HERE!
-        """
-        https://<API-DOCS>
-
-        Endpoint:
-
-            /api/v99/blah/blah
-        """
-        r = self._paginated_call("GET", "/api/v99/blah/blah")
-        return r
 
 
 class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
