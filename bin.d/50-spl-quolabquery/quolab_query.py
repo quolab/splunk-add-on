@@ -3,8 +3,6 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-__version__ = "0.10.0"
-
 import os
 import sys
 import re
@@ -23,6 +21,7 @@ from requests.utils import default_user_agent
 from splunklib.client import Entity, HTTPError
 from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration, Option, validators
 
+from quolab_ta import __version__
 
 """ http debug logging
 import logging

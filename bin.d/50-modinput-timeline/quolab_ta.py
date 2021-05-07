@@ -1,15 +1,17 @@
+""" QuoLab Add on for Splunk share code for QuoLab API access
+"""
+
+__version__ = "0.10.0"
 
 import json
 import re
+import ssl
 from logging import getLogger
 
 import requests
 import six
 
-try:
-    import thread
-except ImportError:
-    import _thread as thread
+from threading import Event, Thread
 
 from cypresspoint.datatype import as_bool
 from cypresspoint.searchcommand import ensure_fields
@@ -85,19 +87,55 @@ class QuoLabAPI(object):
     def get_timeline_events(self, timeline_id, facets=None):
         """ Call /v1/timeline/<timeline_id>/event to return events within the timeline's buffer. """
         # https://node77.cloud.quolab.com/v1/timeline/51942b79b8b34827bf721077fa22a590/event?facets.display=1
+        url = "{}/v1/timeline/{}/event".format(self.url, timeline_id)
         if facets is None:
-            facets = {}
-        #r = self._paginated_call("GET", "/api/v99/blah/blah")
-        # return r
+            facets = ["display"]
+
+        headers = {
+            'content-type': "application/json",
+            'user-agent': "ta-quolab/{} {}".format(__version__, default_user_agent())
+        }
+        data = {}
+        for facet in facets:
+            data["facets.{}".format(facet)] = 1
+        auth = self.get_auth()
+
+        try:
+            response = self.session.request(
+                "GET", url,
+                data=data,
+                headers=headers,
+                auth=auth,
+                verify=self.verify)
+        except requests.ConnectionError as e:
+            self.logger.error("QuoLab API failed due to %s", e)
+
+        response.raise_for_status()
+        data = response.json()
+        assert data["status"] == "OK"
+
+        for record in data.get("records", []):
+            yield record
 
     def subscribe_timeline(self, recv_message_callback, timeline_id, facets=None):
         # if facets is None:
         #   facets = {}
+        qws = QuoLabWebSocket(self.url, self.get_auth(), timeline_id,
+                              recv_message_callback, self.verify)
 
-        qws = QuoLabWebSocket(self.url, self.get_auth(), timeline_id, recv_message_callback)
+        # Run server_forever() in it's own thread, so we can return to the caller
+        # thread.start_new_thread(qws.connect, ())
+        # Python 3 use:  Thread(target=qws.connect, daemon=True).start()
+        t = Thread(target=qws.connect)
+        t.daemon = True
+        t.start()
 
-        # XXX:  Figure out alternates to run_forever()?  Background launch?
-        qws.connect()
+        if not qws.is_setup.wait(15):
+            logger.error("Too too long to setup websocket to {}", self.url)
+            # XXX: Trigger a clean shutdown
+            raise SystemExit(3)
+
+        return qws
 
     def query_catalog(self, query, query_limit):
         """ Handle the query to QuoLab API that drives this SPL command
@@ -117,7 +155,7 @@ class QuoLabAPI(object):
         # Allow total run time to be 10x the individual query limit
         expire = start + (self.api_timeout * 10)
 
-        url = "{}/v1/catalog/query".format(self.api_url)
+        url = "{}/v1/catalog/query".format(self.url)
         headers = {
             'content-type': "application/json",
             'user-agent': "ta-quolab/{} {}".format(__version__, default_user_agent())
@@ -199,11 +237,14 @@ class QuoLabAPI(object):
 
 class QuoLabWebSocket(object):
 
-    def __init__(self, url, auth, timeline, message_callback):
+    def __init__(self, url, auth, timeline, message_callback, verify):
         self.url = url
         self.auth = auth
         self.timeline = timeline
         self.message_callback = message_callback
+        self.verify = verify
+        self.is_done = Event()
+        self.is_setup = Event()
 
     @staticmethod
     def _convert_request_auth_headers(auth):
@@ -212,7 +253,7 @@ class QuoLabWebSocket(object):
         o = C()
         o.headers = {}
         auth(o)
-        return "Authorization: {}".format(o.headers["Authorization"])
+        return o.headers
 
     def connect(self):
         import websocket
@@ -220,21 +261,33 @@ class QuoLabWebSocket(object):
         ws_url = "{}/v1/socket".format(re.sub('^http', 'ws', self.url))
         logger.info("WEB socket URL = %s", ws_url)
         ws = websocket.WebSocketApp(ws_url,
-                                    header=[auth_header],
+                                    header=auth_header,
                                     on_message=self.on_message,
                                     on_error=self.on_error,
                                     on_open=self.on_open,
                                     on_close=self.on_close)
-        ws.run_forever()
+        kw = {}
+        if self.verify is False:
+
+            kw["sslopt"] = {"cert_reqs": ssl.CERT_NONE}
+        # Set ping_interval to cause enable_multithread=True in WebSocket() constructor
+        ws.run_forever(ping_interval=90, ping_timeout=10, **kw)
 
     def on_message(self, ws, msg):
         j = json.loads(msg)
-        logger.debug('[Websocket Message]\n%s', json.dumps(j, indent=4))
+        msg_formatted = json.dumps(j, indent=4)
+        # XXX: Remove the following debug message after initial development
+        logger.debug('[Websocket Message]\n%s', msg_formatted)
+        event_name = j.get('name')
 
-        if j['name'] != 'event':
+        if event_name == "event":
+            self.message_callback(j)
             return
 
-        # XXX:  CUSTOM CALLBACK HAPPENS HERE!!!
+        if event_name == "bound":
+            logger.info("Websocket bound to %s", j["cid"])
+        else:
+            logger.info("Unknown '%s', message not ingested:  %s", event_name, msg_formatted)
 
         '''
         # Indexing the rest
@@ -248,7 +301,6 @@ class QuoLabWebSocket(object):
         except:
             return
         '''
-        self.message_callback(j)
 
     def on_error(self, ws, err):
         logger.error("[Websocket Error] %s", err)
@@ -284,10 +336,15 @@ class QuoLabWebSocket(object):
 
         def run(*args):
             req = self._build_bind_request()   # XXX:  Support facets here!
-            logger.debug("Request payload:  %s", req)
+            logger.debug("[Websocket Open:run()] Request payload:  %s", req)
             ws.send(json.dumps(req))
+            self.is_setup.set()
+
+        import _thread as thread
         thread.start_new_thread(run, ())
+        # Thread(target=run).start()
 
     def on_close(self, ws):
         ws.close()
         logger.info('[Websocket Closed]')
+        self.is_done.set()
