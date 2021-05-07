@@ -91,8 +91,7 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
             logger.info("No known server named '%s', check quolab_servers.conf", server)
             return None
         except Exception as e:
-            self.logger.exception(
-                "Unhandled exception while fetching data from quolab_servers.conf")
+            logger.exception("Unhandled exception while fetching data from quolab_servers.conf")
             raise
         return data
 
