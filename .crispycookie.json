@@ -190,5 +190,9 @@
     "tool_info": {
         "program": "CrispyCookie",
         "version": "0.3.3"
-    }
+    },
+    "layer_mounts": [
+        "default",
+        "metadata"
+    ]
 }
