@@ -11,9 +11,9 @@ import json
 import functools
 import time
 
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from logging import getLogger
-from collections import Counter
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))  # noqa
 
@@ -52,34 +52,27 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
             Argument("server",
                      title="Server",
                      description="Name of QuoLab server",
-
                      data_type=Argument.data_type_string,
                      required_on_create=True
-
                      ))
         scheme.add_argument(
             Argument("timeline",
                      title="Timeline",
                      description="Timeline id from QuoLab",
-
                      data_type=Argument.data_type_string,
                      required_on_create=True
-
                      ))
         scheme.add_argument(
             Argument("backfill",
                      title="Enable Backfill",
                      description="If enabled, the first run will retrieve all existing events from the queue",
-
                      data_type=Argument.data_type_boolean,
                      ))
         scheme.add_argument(
             Argument("log_level",
                      title="Log_level",
                      description="Logging level for internal logging",
-
                      required_on_create=True
-
                      ))
         return scheme
 
@@ -123,10 +116,10 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
     def _stream_events(self, inputs, ew):
         checkpoint_dir = inputs.metadata.get("checkpoint_dir")
         now = datetime.now(timezone.utc)
+        self.lifetime_counter = Counter()
 
         for input_name, input_item in six.iteritems(inputs.inputs):
-
-            counter = Counter()
+            counter = Counter(inputs_processed=1)
 
             # FOR DEVELOPMENT -- Risks sensitive data leaks
             # logger.info("input_item :   %s", input_item)
@@ -191,6 +184,7 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                                   data=json.dumps(body, sort_keys=True, separators=(',', ':')))
                         ew.write_event(e)
                         counter["backfill_events"] += 1
+                        counter["events_ingested"] += 1
                     else:
                         logger.info("Skipping dup %s", event_id)
                         counter["backfill_skip"] += 1
@@ -224,6 +218,7 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                 known_ids.append(event_id)
                 cp["event_ids"] = known_ids
                 counter["stream_events"] += 1
+                counter["events_ingested"] += 1
 
             ws = api.subscribe_timeline(write_event, timeline, facets)
 
@@ -238,10 +233,16 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                 pass
 
             logger.info('Done processing:  input_name="%s" '
-                        'Event counts:  backfill=%d streamed=%d', input_name,
-                        counter["backfill_events"], counter["stream_events"])
+                        'Event counts:  backfill=%d streamed=%d events_ingested=%d', input_name,
+                        counter["backfill_events"], counter["stream_events"],
+                        counter["events_ingested"])
+            self.lifetime_counter += counter
             cp.dump()
             del cp
+
+        if self.lifetime_counter["inputs_processed"] > 1:
+            logger.info("Modular input shutting down.  Lifetime stats:  %s",
+                        " ".join("{}={}".format(k, v) for k, v in self.lifetime_counter.items()))
 
 
 if __name__ == "__main__":
