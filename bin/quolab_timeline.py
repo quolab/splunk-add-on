@@ -12,6 +12,7 @@ import json
 import functools
 import time
 
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from logging import getLogger
 
@@ -121,34 +122,27 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
             Argument("server",
                      title="Server",
                      description="Name of QuoLab server",
-
                      data_type=Argument.data_type_string,
                      required_on_create=True
-
                      ))
         scheme.add_argument(
             Argument("timeline",
                      title="Timeline",
                      description="Timeline id from QuoLab",
-
                      data_type=Argument.data_type_string,
                      required_on_create=True
-
                      ))
         scheme.add_argument(
             Argument("backfill",
                      title="Enable Backfill",
                      description="If enabled, the first run will retrieve all existing events from the queue",
-
                      data_type=Argument.data_type_boolean,
                      ))
         scheme.add_argument(
             Argument("log_level",
                      title="Log_level",
                      description="Logging level for internal logging",
-
                      required_on_create=True
-
                      ))
         return scheme
 
@@ -178,7 +172,10 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
         checkpoint_dir = inputs.metadata.get("checkpoint_dir")
         now = datetime.now(timezone.utc)
 
+        self.lifetime_counter = Counter()
+
         for input_name, input_item in six.iteritems(inputs.inputs):
+            counter = Counter(inputs_processed=1)
 
             # FOR DEVELOPMENT -- Risks sensitive data leaks
             # logger.info("input_item :   %s", input_item)
@@ -216,8 +213,6 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
             logger.info("Launching QuoLab something or other API:  start_time=%s",
                         start_time)
 
-            total_events = 0
-
             for record in your_data_iterable_goes_here:
                 ew.write_event(
                     Event(sourcetype="quolab:timeline", unbroken=True,
@@ -225,12 +220,16 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                 # COOKIECUTTER-TODO:  Incremental updates to 'start_time' checkpoint
                 cp["start_time"] = dt_to_epoch(datetime.strptime(
                     record["updated_at"], "%Y-%m-%dT%H:%M:%S %z"))
-                total_events += 1
+                counter["events_ingested"] += 1
             cp.dump()
             del cp
 
-            logger.info('Done processing:  input_name="%s" total_events=%d',
-                        input_name, total_events)
+            logger.info('Done processing:  input_name="%s" events_ingested=%d',
+                        input_name, counter["events_ingested"])
+            self.lifetime_counter += counter
+        if self.lifetime_counter["inputs_processed"] > 1:
+            logger.info("Modular input shutting down.  Lifetime stats:  %s",
+                        " ".join("{}={}".format(k, v) for k, v in self.lifetime_counter.items()))
 
 
 if __name__ == "__main__":

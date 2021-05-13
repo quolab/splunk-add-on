@@ -12,8 +12,14 @@ Copy imports and method sippets into the destination application code methods
 
 # Ignore this code.  This code is here to avoid validation errors
 from splunklib.client import Entity, HTTPError
+from cypresspoint.datatype import as_bool, reltime_to_timedelta
+import sys
+import json
 from logging import getLogger
 logger = getLogger()
+
+
+# Some imports that you *may* need
 
 
 ################################################################################
@@ -27,17 +33,15 @@ class YourModularInput:
 
     # Copy this method into your custom class
 
-    def fetch_quolab_servers(self, entity_name):
-
+    def fetch_quolab_servers(self, server):
         logger.debug("Fetching API endpoint configurations from Splunkd (quolab_servers.conf)")
         try:
-            data = Entity(self.service, "quolab/quolab_servers/{}/full".format(self.server))
+            data = Entity(self.service, "quolab/quolab_servers/{}/full".format(server))
         except HTTPError as e:
-            logger.info("No known server named '%s', check quolab_servers.conf", self.server)
+            logger.info("No known server named '%s', check quolab_servers.conf", server)
             return None
         except Exception as e:
-            self.logger.exception(
-                "Unhandled exception while fetching data from quolab_servers.conf")
+            logger.exception("Unhandled exception while fetching data from quolab_servers.conf")
             raise
         return data
 
@@ -48,11 +52,18 @@ class YourModularInput:
 
             server_name = input_item["server"]
             # Load reference content from quolab_servers.conf
-            server = self.fetch_quolab_servers(self, server_name)
-            if not server:
+            server_config = self.fetch_quolab_servers(self, server_name)
+            if not server_config:
                 # Skip current input due to reference failure
                 continue
-            secret_value = server["secret"]
+
+            server_url = server_config["url"]
+            server_username = server_config["username"]
+            server_secret = server_config["secret"]
+            server_verify = as_bool(server_config["verify"])
+            server_max_batch_size = int(server_config["max_batch_size"])
+            server_max_execution_time = int(server_config["max_execution_time"])
+            server_disabled = as_bool(server_config["disabled"])
 
 
 ################################################################################
@@ -67,17 +78,11 @@ class YourCustomSearchCommand:
         # Set defaults for quolab_servers server
 
         self.api_url = None
-
         self.api_username = None
-
         self.api_secret = "HIDDEN"
-
         self.api_verify = True
-
         self.api_max_batch_size = 500
-
         self.api_max_execution_time = 300
-
         self.api_disabled = False
 
     def prepare(self):
@@ -109,5 +114,74 @@ class YourCustomSearchCommand:
                             "from {} without secret.".format(self.api_url),
                             "Missing secret.  Did you run setup?")
 
+
+################################################################################
+# Use quolab_servers.conf for a modular alert action
+################################################################################
+# Imports & Globals
+APP_NAME = "TA-quolab"
+
+
+def splunklib_client(url, session_key, app=None, owner=None):
+    import splunklib.client
+    from six.moves.urllib.parse import urlparse
+    u = urlparse(url)
+    service = splunklib.client.connect(
+        host=u.hostname,
+        port=u.port,
+        scheme=u.scheme,
+        token=session_key,
+        app=app or APP_NAME,
+        owner=owner or "nobody",
+        autologin=False)
+    return service
+
+
+def fetch_quolab_servers(service, server):
+    logger.debug("Fetching API endpoint configurations from Splunkd (quolab_servers.conf)")
+    try:
+        data = Entity(service, "quolab/quolab_servers/{}/full".format(server))
+    except HTTPError as e:
+        logger.info("No known server named '%s', check quolab_servers.conf", server)
+        return None
+    except Exception as e:
+        logger.exception("Unhandled exception while fetching data from quolab_servers.conf")
+        raise
+    return {
+        "url":  data["url"],
+        "username":  data["username"],
+        "verify": as_bool(data["verify"]),
+        "max_batch_size": int(data["max_batch_size"]),
+        "max_execution_time": int(data["max_execution_time"]),
+        "disabled": as_bool(data["disabled"]),
+    }
+
+
+# Whatever your processsing function is named....
+
+def alert_main():
+    settings = json.loads(sys.stdin.read())
+    session = splunklib_client(settings["server_uri"],
+                               settings["session_key"],
+                               settings["app"],
+                               settings["owner"])
+
+    configuration = settings['configuration']
+    server_name = configuration["server"]
+    server_config = fetch_quolab_servers(session, server_name)
+    if not server_config:
+        # CONF entity not found.  Abort.
+        return
+
+    # PICK YOUR OWN ADVENTURE:
+
+    # Option 1:  Access the quolab_servers properties with standard dictionary access
+    FIELD_NAME = server_config["FIELD_NAME"]
+
+    # Option 2:  Add expanded conf settings to the configuration variable under a new key:
+    configuration["server_conf"] = server_config
+
+    # Option 3:  Flatten everyting into 'configuration', assuming no naming collisions between alert_actions.conf & quolab_servers.conf
+    configuration.update(server_config)
 
 # COOKIECUTER-TODO: Delete THIS file :-)

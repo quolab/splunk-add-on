@@ -1,9 +1,7 @@
 import unittest
 import os
 import sys
-
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "bin"))  # noqa
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "bin.d", "50-spl-quolabquery"))  # noqa
 
 
 import quolab_query

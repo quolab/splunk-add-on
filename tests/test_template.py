@@ -1,13 +1,12 @@
 import unittest
 import os
 import sys
-
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "bin"))  # noqa
+
 
 # import something from the 'bin' folder :=)
 
 # COOKIECUTTER-TODO: Fill in unit tests logic, as required.  Remove default tests
-
 
 class TestQuolab(unittest.TestCase):
     def test_example001(self):
