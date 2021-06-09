@@ -21,7 +21,7 @@ from requests.utils import default_user_agent
 from splunklib.client import Entity, HTTPError
 from splunklib.searchcommands import dispatch, GeneratingCommand, Configuration, Option, validators
 
-from quolab_ta import __version__
+from quolab_ta import monotonic, __version__
 
 """ http debug logging
 import logging

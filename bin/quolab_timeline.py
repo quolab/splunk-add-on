@@ -1,36 +1,31 @@
 """
-Modular Input for stuff
+Modular Input for QuoLab timeline activity stream indexing
 """
+
 from __future__ import absolute_import, print_function, unicode_literals
 
-
+import json
 import os
 import sys
-import re
-import json
-import functools
+import threading
 import time
-
 from collections import Counter
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from logging import getLogger
+from queue import Empty, Queue
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))  # noqa
 
 import cypresspoint.monkeypatch  # noqa
-from splunklib.modularinput import Event, Argument, Scheme  # nopqa
-from splunklib.client import Entity, HTTPError
-
-from cypresspoint import setup_logging
-from cypresspoint.compat import dt_to_epoch
-from cypresspoint.datatype import as_bool, reltime_to_timedelta
-from cypresspoint.modinput import ScriptWithSimpleSecret
-from cypresspoint.checkpoint import ModInputCheckpoint
-
-from quolab_ta import QuoLabAPI, __version__
-
-import requests
 import six
+from cypresspoint import setup_logging
+from cypresspoint.checkpoint import ModInputCheckpoint
+from cypresspoint.datatype import as_bool
+from cypresspoint.modinput import ScriptWithSimpleSecret
+from splunklib.client import Entity, HTTPError
+from splunklib.modularinput import Argument, Event, Scheme  # nopqa
+
+from quolab_ta import QuoLabAPI, __version__, monotonic
 
 logger = getLogger("QuoLab.Input.Timeline")
 
@@ -41,7 +36,15 @@ setup_logging(
     debug=DEBUG)
 
 
+def counter_to_kv(c):
+    return " ".join("{}={}".format(k, v) for k, v in c.items())
+
+
 class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
+
+    # XXX: Make this a configurable parameter
+    queue_size = 1024
+
     def get_scheme(self):
         scheme = Scheme("QuoLab Timeline")
         scheme.description = "Ingest QuoLab timeline using Web Sockets"
@@ -105,6 +108,49 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
             raise ValueError("Unexpected value for 'log_level'. "
                              "Please pick from {}".format(" ".join(valid_log_level_values)))
 
+    @staticmethod
+    def backfill_reader(api, timeline, queue, facets, counter):
+        """ This will be launched in its own thread. """
+        # XXX: Better race condition avoidance method needed here!
+        # We don't know exactly when the websocket subscription goes active, so take a beat.
+        time.sleep(2)
+
+        logger.info("Reading from the queue to backfill missing events")
+        try:
+            for body in api.get_timeline_events(timeline, facets):
+                queue.put(("backfill", body["id"], body))
+                counter["backfill_queued"] += 1
+        except Exception:
+            logger.exception("Failed to retreive all backfill events.")
+
+        # We can't easily determine how many events were written vs skipped, without waiting for the queue to drain
+        timeout = 600
+        while timeout > 0:
+            time.sleep(1)
+            timeout -= 1
+            if queue.empty():
+                # There's still a race condition here :-(   there could be a gap between queue.get() in the receiver
+                time.sleep(1)
+                break
+
+        logger.info("Loaded %d of %d events from queue buffer.  %d skipped%s",
+                    counter["backfill_ingested"],
+                    counter["backfill_queued"],
+                    counter["backfill_skipped"],
+                    "  timeout waiting for queue to quiesce; stats could be wrong" if timeout < 0 else "")
+
+    @staticmethod
+    def websocket_reader(api, timeline, queue, facets, counter):
+        def put_event_queue(record):
+            body = record["body"]
+            event_id = body["id"]
+            queue.put(("websocket", event_id, body))
+            counter["websocket_queued"] += 1
+        logger.info("Starting websocket listening....")
+        ws = api.subscribe_timeline(put_event_queue, timeline, facets)
+        logger.info("Does this line get executed?")
+        del ws
+
     def stream_events(self, inputs, ew):
         # Workaround for Splunk SDK's poor modinput error capturing.  Logging enhancement
         try:
@@ -115,10 +161,14 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
 
     def _stream_events(self, inputs, ew):
         checkpoint_dir = inputs.metadata.get("checkpoint_dir")
-        now = datetime.now(timezone.utc)
         self.lifetime_counter = Counter()
 
         for input_name, input_item in six.iteritems(inputs.inputs):
+            # Q:  is a counter thread safe?
+            # A:  Kinda, thread-safe enough.  It's subclass of dict so that helps, but
+            #     d[x] += 1 is NOT threadsafe in general, but if we avoid updating the
+            #     same key multiples places, that should be safe.  To put this in
+            #     perspective, worse case is an invalid count, so an acceptable risk.
             counter = Counter(inputs_processed=1)
 
             # FOR DEVELOPMENT -- Risks sensitive data leaks
@@ -131,10 +181,11 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
             server = input_item['server']
             timeline = input_item['timeline']
             backfill = as_bool(input_item['backfill'])
+            history_size = 10000
 
             # XXX: Add these as param :=)
             facets = ["display"]
-            stats_interval = 300
+            # stats_interval = 300
 
             log_level = input_item['log_level']
 
@@ -149,9 +200,13 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
             api_verify = as_bool(server["verify"])
 
             logger.info('Processing input input_name="%s" app=%s ta_version=%s '
-                        'server=%s', input_name, app, __version__, server)
+                        'server=%s', input_name, app, __version__, api_url)
             cp = ModInputCheckpoint(checkpoint_dir, input_name)
             cp.load()
+            cp.dump_after_updates = 50
+
+            # Use queue to safely manage work from backfill websocket streams
+            queue = Queue(self.queue_size)
 
             api = QuoLabAPI(api_url, verify=api_verify)
             if api_username == "<TOKEN>":
@@ -160,6 +215,7 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                 api.login(api_username, api_secret)
 
             load_from_buffer = True
+            backfill_thread = None
 
             # Keep track of which event ids have been previously loaded
             known_ids = cp.get("event_ids", [])
@@ -171,78 +227,87 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                     load_from_buffer = False
 
             if load_from_buffer:
-                current_ids = []
-                logger.info("Query QuoLab timeline for buffered events.  "
-                            "(%d known ids cached)", len(known_ids))
-                for body in api.get_timeline_events(timeline, facets):
-                    event_id = body["id"]
-                    current_ids.append(event_id)
-                    if event_id not in known_ids:
-                        logger.info("Ingesting (new) id %s", event_id)
-                        body["TA_CODEPATH"] = "backfill"
-                        e = Event(sourcetype="quolab:timeline", unbroken=True,
-                                  data=json.dumps(body, sort_keys=True, separators=(',', ':')))
-                        ew.write_event(e)
-                        counter["backfill_events"] += 1
-                        counter["events_ingested"] += 1
-                    else:
-                        logger.info("Skipping dup %s", event_id)
-                        counter["backfill_skip"] += 1
-                # Assumption here is that after filtering out dups for the backfill ingestion (to find events
-                # triggered while this modular input was offline), can be replaced with a new list of ids
-                # just pulled from the server.  Items expired from the buffer will never re-occur.
-
-                logger.info("known_ids=%r   current_ids=%r", known_ids, current_ids)
-                #known_ids = current_ids
-                known_ids.clear()
-                known_ids.extend(current_ids)
-                logger.info("Loaded %d events from queue buffer.  %d skipped",
-                            counter["backfill_events"], counter["backfill_skip"])
+                backfill_thread = threading.Thread(target=self.backfill_reader,
+                                                   args=(api, timeline, queue, facets, counter))
+                backfill_thread.start()
 
             # XXX: Technically, there's a race-condition here.
             # Q:  Should the websocket stream should be established before the backfill?
-            logger.info("Starting websocket listening....")
+            # A:  Per Fred/Tiago:  YES
+            # Doh, there is still a race condition.  Because we don't known exactly when the websocket is subscribed
 
-            def write_event(record):
-                body = record["body"]
-                body["TA_CODEPATH"] = "stream"
-                event_id = body["id"]
-                msg = json.dumps(body, sort_keys=True, separators=(',', ':'))
-                e = Event(sourcetype="quolab:timeline", unbroken=True, data=msg)
-                ew.write_event(e)
-                # XXX: Add 'id' to event_ids.  ALSO come up with a max queue size (or just query for it
-                # against /v1/timeline directly) so that we have an idea of how many back items to store.
-                # Another approach would be to re-query /v1/timeline/<ID>/event periodically, using the
-                # same cleanup logic used above.
+            # XXX: Not sure why calling this function directly doesn't seem to work; but the thread approach works
+            # self.websocket_reader(api, timeline, queue, facets, counter)
+            websocket_thread = threading.Thread(target=self.websocket_reader,
+                                                args=(api, timeline, queue, facets, counter))
+            websocket_thread.start()
 
-                known_ids.append(event_id)
-                cp["event_ids"] = known_ids
-                counter["stream_events"] += 1
-                counter["events_ingested"] += 1
+            maint_interval = 30
+            dump_max_interval = timedelta(seconds=45)
+            next_maint = monotonic() + maint_interval
 
-            ws = api.subscribe_timeline(write_event, timeline, facets)
-
+            # Fetch queued events and send them to Splunk
             try:
-                while not ws.is_done.wait(stats_interval):
-                    logger.info('Processing stats:  input_name="%s" '
-                                'Event counts:  backfill=%d streamed=%d', input_name,
-                                counter["backfill_events"], counter["stream_events"])
-                    cp.dump()
-            except (KeyboardInterrupt, SystemExit):
+                while True:
+                    do_maint = False
+                    try:
+                        queue_source, event_id, record = queue.get(timeout=maint_interval)
+                        # Q: should we only check for dups for queue_source=="backfill"?  (check counter)
+                        if event_id in known_ids:
+                            counter["{}_skipped".format(queue_source)] += 1
+                            continue
+
+                        # XXX:  'TA_CODEPATH' for debugging where events come from.
+                        record["TA_CODEPATH"] = queue_source
+                        msg = json.dumps(record, separators=(',', ':'))
+                        e = Event(sourcetype="quolab:timeline", unbroken=True, data=msg)
+                        ew.write_event(e)
+
+                        known_ids.append(event_id)
+                        cp["event_ids"] = known_ids
+                        counter["{}_ingested".format(queue_source)] += 1
+                        counter["events_ingested"] += 1
+
+                        if monotonic() > next_maint:
+                            do_maint = True
+
+                    except Empty:
+                        logger.debug("timeout waiting for events in queue.  Trigger maint tasks.")
+                        do_maint = True
+
+                    if do_maint:
+                        logger.info('Processing stats:  input_name="%s" '
+                                    'Event counts:  %s', input_name,
+                                    counter_to_kv(counter))
+
+                        # XXX: Improve cleanup logic to probe /v1/timeline for queue length at startup
+                        if len(known_ids) > history_size:
+                            logger.debug("Cleaning up event_id history.   "
+                                         "Had %d entries, capping at %d", len(known_ids), history_size)
+                            known_ids = known_ids[history_size:]
+                            cp["event_ids"] = known_ids
+                        cp.dump_on_interval(dump_max_interval)
+                        next_maint = monotonic() + maint_interval
+
+            except (KeyboardInterrupt, SystemExit) as e:
+                # Note that using 'get()' in python 2.7 and on Windows, this get() with timeout may not be interuptable
+                # See https://docs.python.org/3/library/queue.html#queue.Queue.get the implications are not clear to me
                 # Just existing the above loop is good enough
+                logger.info("Exiting loop due to %s", e)
                 pass
 
+            # XXX: Update with new counter names
             logger.info('Done processing:  input_name="%s" '
-                        'Event counts:  backfill=%d streamed=%d events_ingested=%d', input_name,
-                        counter["backfill_events"], counter["stream_events"],
-                        counter["events_ingested"])
+                        'Event counts:  backfill=%d streamed=%d events_ingested=%d  |  %s', input_name,
+                        counter["backfill_ingested"], counter["websocket_ingested"],
+                        counter["events_ingested"], counter_to_kv(counter))
             self.lifetime_counter += counter
             cp.dump()
             del cp
 
         if self.lifetime_counter["inputs_processed"] > 1:
             logger.info("Modular input shutting down.  Lifetime stats:  %s",
-                        " ".join("{}={}".format(k, v) for k, v in self.lifetime_counter.items()))
+                        counter_to_kv(self.lifetime_counter))
 
 
 if __name__ == "__main__":

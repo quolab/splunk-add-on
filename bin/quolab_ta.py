@@ -6,6 +6,7 @@ __version__ = "0.10.0"
 import json
 import re
 import ssl
+import time
 from logging import getLogger
 
 import requests
@@ -17,6 +18,13 @@ from cypresspoint.datatype import as_bool
 from cypresspoint.searchcommand import ensure_fields
 from requests.auth import AuthBase, HTTPBasicAuth
 from requests.utils import default_user_agent
+from cypresspoint.spath import splunk_dot_notation
+
+try:
+    from time import monotonic
+except ImportError:
+    # Good-enough fallback for PY2 users
+    from time import time as monotonic
 
 logger = getLogger("quolab.common")
 
@@ -108,10 +116,20 @@ class QuoLabAPI(object):
                 auth=auth,
                 verify=self.verify)
         except requests.ConnectionError as e:
-            self.logger.error("QuoLab API failed due to %s", e)
+            logger.error("QuoLab API failed due to %s", e)
 
         response.raise_for_status()
-        data = response.json()
+        try:
+            data = response.json()
+        except ValueError as e:
+            raw = response.content
+            content_length = len(raw)
+            logger.error("QuoLab API response could not be parsed.  url=%s content-length=%d  %s",
+                         url, content_length, e)
+            logger.debug("QuoLab API raw response: url=%s \n%s", url, raw)
+            raise
+        # debugging
+        logger.info("QuoLab API response was parsed as json successfully!")
         assert data["status"] == "OK"
 
         for record in data.get("records", []):
@@ -143,10 +161,6 @@ class QuoLabAPI(object):
         """
         # XXX:  COMPLETE MIGRATION OF THIS METHOD!!
         # XXX:  REPLACE THIS CODE IN quolab_query.py
-
-        def monotonic():
-            # PY3:  Switch to time.monotonic()
-            return time.time()
 
         # CATALOG QUERY
         session = self.session

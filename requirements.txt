@@ -1,7 +1,7 @@
 # Version pinning for consistent builds
 
 six==1.15.0
-cypresspoint==0.4.1
+cypresspoint==0.6.0
 splunk-sdk==1.6.15
 websocket-client==0.59.0
 requests==2.25.1

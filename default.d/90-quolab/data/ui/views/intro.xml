@@ -24,6 +24,8 @@
                     The QuoLab add-on for Splunk adds a generating command <i>quolabquery</i> that makes search requests to QuoLab servers.
                     Pull in facts, sysfacts, refs, facets, and more from one or more QuoLab servers.
                 </p>
+                <h2>Timeline data input</h2>
+                <p> Timeline events can be ingeseted into Splunk via a modular input.   Setup <a href="/manager/$env:app$/data/inputs/quolab_timeline">QuoLab Timeline</a> inputs.</p>
                 <h3>Configure</h3>
                 <p>
                     Click <a href="configure">here</a> to configure. You'll need a username and password for a QuoLab server.
