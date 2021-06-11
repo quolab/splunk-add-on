@@ -1,0 +1,194 @@
+{
+    "layers": [
+        {
+            "name": "app-python",
+            "layer_name": "20-base",
+            "cookiecutter": {
+                "layer": "20-base",
+                "vendor": "QuoLab",
+                "vendor_product": "QuoLab",
+                "app_folder": "TA-quolab",
+                "app_label": "QuoLab Add-on for Splunk",
+                "build_tool": "GitHub_Actions",
+                "author_splunkid": "kintyre",
+                "author_email": "splunkbase@kintyre.co",
+                "author_company": "Kintyre",
+                "on_splunkbase": true,
+                "splunkbase_id": 5456,
+                "git_repo": "https://github.com/quolab/splunk-add-on",
+                "git_branch": "main"
+            }
+        },
+        {
+            "name": "custom-conf",
+            "layer_name": "30-conf-quolabservers",
+            "cookiecutter": {
+                "layer": "30-conf-quolabservers",
+                "vendor": "QuoLab",
+                "vendor_product": "QuoLab",
+                "app_folder": "TA-quolab",
+                "app_label": "QuoLab Add-on for Splunk",
+                "need_auth": true,
+                "secret_name": "secret",
+                "conf_name": "quolab_servers",
+                "conf_type": "server",
+                "rest_name": "quolab_servers",
+                "conf_fields": {
+                    "url": {
+                        "label": "URL",
+                        "type": "url",
+                        "required": true,
+                        "example": "https://example.server.com:1080/service",
+                        "description": "The server name and port where QuoLab API requests will be sent",
+                        "help": "This is the same URL used for accessing the QuoLab web user interface",
+                        "display": {
+                            "class": "input-xlarge"
+                        },
+                        "validation": {
+                            "type": "regex",
+                            "value": "^https?://[^\\s]+$"
+                        }
+                    },
+                    "username": {
+                        "label": "Username",
+                        "type": "string",
+                        "required": true,
+                        "example": "jdoe",
+                        "description": "Username for the QuoLab server.",
+                        "help": "Username can be a regular user account name, or 'TOKEN' when using token-based authentication.",
+                        "validation": {
+                            "type": "regex",
+                            "value": "^[\\w_.-]+$"
+                        }
+                    },
+                    "secret": {
+                        "default": "HIDDEN",
+                        "label": "Password",
+                        "type": "secret",
+                        "display": {
+                            "hidden": true
+                        },
+                        "required": true,
+                        "description": "The password associated with the given username or a token"
+                    },
+                    "verify": {
+                        "default": true,
+                        "type": "bool",
+                        "required": false,
+                        "description": "Use HTTPS certificate validation",
+                        "help": "The QuoLab HTTPS listener using a publicly signed certificate.  Please understand the security implications of settings this to false.  This should never be false if your QuoLab server is accessed on a public internet connection."
+                    },
+                    "max_batch_size": {
+                        "label": "Max Batch Size",
+                        "type": "int",
+                        "description": "Number of catalog items to fetch per HTTP call",
+                        "help": "The maximum number of results that can be fetched in a single query to the API.  If more events are requested at search time then multiple queries will be sent to the API using the supported pagination technique.",
+                        "required": true,
+                        "default": 500
+                    },
+                    "max_execution_time": {
+                        "label": "Max Execution Time",
+                        "type": "int",
+                        "description": "The longest duration in seconds that any individual query may last.",
+                        "required": true,
+                        "default": 300
+                    },
+                    "disabled": {
+                        "default": false,
+                        "type": "bool",
+                        "required": false,
+                        "description": "Toggle configuration entry status"
+                    }
+                },
+                "custom_action": "full"
+            }
+        },
+        {
+            "name": "search-command",
+            "layer_name": "50-spl-quolabquery",
+            "cookiecutter": {
+                "layer": "50-spl-quolabquery",
+                "vendor": "QuoLab",
+                "vendor_product": "QuoLab",
+                "app_folder": "TA-quolab",
+                "app_label": "QuoLab Add-on for Splunk",
+                "author_email": "splunkbase@kintyre.co",
+                "spl_class": "QuoLabQueryCommand",
+                "spl_script": "quolab_query",
+                "spl_command": "quolabquery",
+                "spl_type": "Generating",
+                "need_auth": "True",
+                "conf_name": "quolab_servers",
+                "conf_type": "server",
+                "json_output": true
+            }
+        },
+        {
+            "name": "modinput-rest",
+            "layer_name": "50-modinput-timeline",
+            "cookiecutter": {
+                "layer": "50-modinput-timeline",
+                "modinput_name": "quolab_timeline",
+                "modinput_class": "QuoLabTimelineModularInput",
+                "modinput_sourcetype": "quolab:timeline",
+                "modinput_sourcetype_int": "quolab:modinput:timeline",
+                "uses_state_tracking": true,
+                "is_metrics": false,
+                "is_json": true,
+                "auth_type": "basic",
+                "modinput_fields": {
+                    "server": {
+                        "type": "string",
+                        "required": true,
+                        "default": "quolab",
+                        "description": "Name of QuoLab server",
+                        "help": "Stanza name of the QuoLab server stored in quolab_servers.conf",
+                        "reference": {
+                            "type": "rest",
+                            "rest": "/quolab/quolab_servers"
+                        }
+                    },
+                    "timeline": {
+                        "type": "string",
+                        "required": true,
+                        "description": "Timeline id from QuoLab",
+                        "help": "TODO:  Describe how users can find this ID from the QuoLab user interface.   For now, navigate to /v1/timeline from your browser."
+                    },
+                    "backfill": {
+                        "label": "Enable Backfill",
+                        "type": "bool",
+                        "default": true,
+                        "required": false,
+                        "description": "If enabled, the first run will retrieve all existing events from the queue"
+                    },
+                    "log_level": {
+                        "default": "INFO",
+                        "required": true,
+                        "description": "Logging level for internal logging",
+                        "validation": {
+                            "type": "choices",
+                            "value": [
+                                "DEBUG",
+                                "INFO",
+                                "WARN",
+                                "ERROR"
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    ],
+    "tool_info": {
+        "program": "CrispyCookie",
+        "version": "0.6.1"
+    },
+    "layer_mounts": [
+        "default",
+        "metadata"
+    ],
+    "source": {
+        "repo": "https://github.com/Kintyre/cypress-cookiecutter.git",
+        "rev": "v1.5.0"
+    }
+}

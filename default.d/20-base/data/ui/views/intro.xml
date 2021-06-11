@@ -1,0 +1,17 @@
+<dashboard>
+   <!-- -->
+   <label>Welcome</label>
+   <row>
+      <panel>
+         <html>
+            <h1>QuoLab Add-on for Splunk v0.1.0</h1>
+            <p>
+               <b>COOKIECUTTER-TODO:  Add intro text here</b>
+            </p>
+            <p>
+                You can find this app's full documentation on <a href="https://github.com/quolab/splunk-add-on/blob/main/.splunkbase/details.md" target="_blank">GitHub</a> and <a href="https://splunkbase.splunk.com/app/5456/#details" target="_blank">Splunkbase</a>.
+            </p>
+         </html>
+      </panel>
+   </row>
+</dashboard>

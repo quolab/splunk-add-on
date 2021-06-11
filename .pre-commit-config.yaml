@@ -4,18 +4,12 @@ repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v2.5.0
   hooks:
-    - id: trailing-whitespace
-      exclude: README\.md
-    - id: end-of-file-fixer
-      exclude: (README\.md|\.bumpversion.cfg)$
+    - id: check-merge-conflict
     - id: check-json
     - id: check-xml
     - id: check-ast
     - id: check-added-large-files
       args: [ '--maxkb=200' ]
-    - id: check-merge-conflict
-    - id: mixed-line-ending
-      args: [ '--fix=lf' ]
 
 - repo: https://github.com/pre-commit/mirrors-autopep8
   rev: v1.5.4
@@ -29,3 +23,24 @@ repos:
     - id: ksconf-sort
       exclude: logging\.conf
     - id: ksconf-xml-format
+
+# Ensure 'mixed-line-ending' runs last.  Other edit-in-place tools make result in the use of native EOL on Windows.
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v2.5.0
+  hooks:
+    - id: trailing-whitespace
+      exclude: README\.md
+    - id: end-of-file-fixer
+      exclude: (README\.md|\.bumpversion.cfg)$
+    - id: mixed-line-ending
+      args: [ '--fix=lf' ]
+
+
+- repo: local
+  hooks:
+    - id: python-unittest
+      name: Run all unit tests for QuoLab Add-on for Splunk
+      language: system
+      entry: python -m unittest discover -s tests
+      types: [ python ]
+      pass_filenames: false

@@ -5,7 +5,7 @@ on:
     tags:
     - 'v*'
     branches:
-    - master
+    - main
 
 jobs:
 
@@ -34,7 +34,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install kintyre-splunk-conf==v0.8-b6
+        pip install 'kintyre-splunk-conf>=0.8,<0.9'
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: QuoLab Add-on for Splunk package build
       id: buildpkg

@@ -1,5 +1,5 @@
 pip>=20
-bump2version
+bump2version>=1.0.1
 kintyre-splunk-conf>0.8
 pre-commit
 autopep8

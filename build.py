@@ -18,14 +18,14 @@ BUILD_FILES = [
 ]
 
 COPY_FILES = [
-    "README.md",
-    "bin/*.py",
-    "default/",
-    "metadata/*.meta",
-    "static/",
-    "lookups/*.csv",
+    "*.md",
     "appserver/",
-    "README/*.spec",
+    "bin/",
+    "default.d/",
+    "lookups/*.csv",
+    "metadata.d/",
+    "README/",
+    "static/",
 ] + BUILD_FILES
 
 
@@ -44,8 +44,8 @@ def package_spl(step):
     step.run(sys.executable, "-m", "ksconf", "package",
              "--file", step.dist_path / SPL_NAME,   # Path to created tarball
              "--app-name", APP_FOLDER,              # Top-level directory name
-             "--layer-method", "disable",           # Simple app, no layers
-             "--block-local",                       # Never have a 'local' folder at build time
+             "--block-local",                       # Build from version control should have no 'local' folder
+             "--layer-method", "dir.d",
              "--blocklist", "requirements.txt",     # No need to distribute this in the app
              "--release-file", str(release_path),
              ".")

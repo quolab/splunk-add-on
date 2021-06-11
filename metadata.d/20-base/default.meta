@@ -3,17 +3,7 @@
 []
 access = read : [ * ], write : [ admin, sc_admin ]
 
-[commands]
-access = read : [], write : [ admin, sc_admin ]
-export = system
-
-[commands/quolabquery]
-access = read : [ role_quolab_servers_user ], write : [ admin, sc_admin ]
-
 [eventtypes]
-export = system
-
-[inputs]
 export = system
 
 [lookups]
@@ -23,9 +13,6 @@ export = system
 export = system
 
 [props]
-export = system
-
-[searchbnf]
 export = system
 
 [tags]
