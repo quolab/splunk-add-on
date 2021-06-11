@@ -256,6 +256,10 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
             dump_max_interval = timedelta(seconds=45)
             next_maint = monotonic() + maint_interval
 
+            # XXX:  For debugging where duplicates are comming from
+            PID = os.getpid()
+            EVENT_ID = 0
+
             # Fetch queued events and send them to Splunk
             try:
                 while True:
@@ -269,6 +273,10 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
 
                         # XXX:  'TA_CODEPATH' for debugging where events come from.
                         record["TA_CODEPATH"] = queue_source
+                        record["TA_PID"] = PID
+                        EVENT_ID += 1
+                        record["TA_EVENT_ID"] = EVENT_ID
+
                         msg = json.dumps(record, separators=(',', ':'))
                         e = Event(sourcetype="quolab:timeline", unbroken=True, data=msg)
                         ew.write_event(e)
