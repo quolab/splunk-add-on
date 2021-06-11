@@ -109,7 +109,7 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                              "Please pick from {}".format(" ".join(valid_log_level_values)))
 
     @staticmethod
-    def backfill_reader(api, timeline, queue, facets, counter):
+    def backfill_reader(api, timeline, queue, facets, counter, retry=0):
         """ This will be launched in its own thread. """
         # XXX: Better race condition avoidance method needed here!
         # We don't know exactly when the websocket subscription goes active, so take a beat.
@@ -122,6 +122,16 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                 counter["backfill_queued"] += 1
         except Exception:
             logger.exception("Failed to retreive all backfill events.")
+
+            # XXX: Experimental attempt to workaround this an elusive issue
+            if retry <= 3:
+                retry += 1
+                logger.info("Will attempt to re-run the backfill (retry=%d)", retry)
+                time.sleep(5)
+                threading.Thread(target=QuoLabTimelineModularInput.backfill_reader,
+                                 args=(api, timeline, queue, facets, counter),
+                                 kwargs={"retry": retry}).start()
+                return
 
         # We can't easily determine how many events were written vs skipped, without waiting for the queue to drain
         timeout = 600
