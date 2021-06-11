@@ -1,24 +1,18 @@
 """ QuoLab Add on for Splunk share code for QuoLab API access
 """
 
-__version__ = "0.10.0"
-
 import json
 import re
 import ssl
 import time
 from logging import getLogger
-
-import requests
-import six
-
 from threading import Event, Thread
 
-from cypresspoint.datatype import as_bool
-from cypresspoint.searchcommand import ensure_fields
+import requests
+
+from cypresspoint.spath import splunk_dot_notation
 from requests.auth import AuthBase, HTTPBasicAuth
 from requests.utils import default_user_agent
-from cypresspoint.spath import splunk_dot_notation
 
 try:
     from time import monotonic
@@ -26,7 +20,18 @@ except ImportError:
     # Good-enough fallback for PY2 users
     from time import time as monotonic
 
+from . import __version__
+
 logger = getLogger("quolab.common")
+
+
+""" http debug logging
+import logging
+from http.client import HTTPConnection  # py3
+
+log = logging.getLogger('urllib3')
+log.setLevel(logging.DEBUG)
+"""
 
 
 class QuolabAuth(AuthBase):
@@ -155,10 +160,13 @@ class QuoLabAPI(object):
 
         return qws
 
-    def query_catalog(self, query, query_limit):
+    def query_catalog(self, query, query_limit, timeout=30, fetch_count=1000, write_error=None):
         """ Handle the query to QuoLab API that drives this SPL command
         Returns [results]
         """
+        if write_error is None:
+            def write_error(s, *args, **kwargs): pass
+
         # XXX:  COMPLETE MIGRATION OF THIS METHOD!!
         # XXX:  REPLACE THIS CODE IN quolab_query.py
 
@@ -167,7 +175,7 @@ class QuoLabAPI(object):
 
         start = monotonic()
         # Allow total run time to be 10x the individual query limit
-        expire = start + (self.api_timeout * 10)
+        expire = start + (timeout * 10)
 
         url = "{}/v1/catalog/query".format(self.url)
         headers = {
@@ -175,18 +183,18 @@ class QuoLabAPI(object):
             'user-agent': "ta-quolab/{} {}".format(__version__, default_user_agent())
         }
         # XXX: Per query limit optimization?  Maybe based on type, or number of facets enabled?
-        query["limit"] = min(query_limit, self.api_fetch_count)
+        query["limit"] = min(query_limit, fetch_count)
 
         # Q: What do query results look like when time has been exceeded?  Any special handling required?
-        query.setdefault("hints", {})["timeout"] = self.api_timeout
+        query.setdefault("hints", {})["timeout"] = timeout
         i = http_calls = 0
 
         auth = self.get_auth()
 
         while True:
             data = json.dumps(query)
-            self.logger.debug("Sending query to API:  %r   headers=%r auth=%s",
-                              data, headers, auth.__class__.__name__)
+            logger.debug("Sending query to API:  %r   headers=%r auth=%s",
+                         data, headers, auth.__class__.__name__)
             try:
                 response = session.request(
                     "POST", url,
@@ -196,8 +204,8 @@ class QuoLabAPI(object):
                     verify=self.verify)
                 http_calls += 1
             except requests.ConnectionError as e:
-                self.logger.error("QuoLab API failed due to %s", e)
-                self.write_error("QuoLab server connection failed to {}", url)
+                logger.error("QuoLab API failed due to %s", e)
+                write_error("QuoLab server connection failed to {}", url)
                 return
 
             if response.status_code >= 400 and response.status_code < 500:
@@ -205,23 +213,23 @@ class QuoLabAPI(object):
                 if "status" in body or "message" in body:
                     status = body.get("status", response.status_code)
                     message = body.get("message", "")
-                    self.logger.error("QuoLab API returned unexpected status response from query.  "
-                                      "status=%r message=%r query=%r", status, message, query)
-                    self.write_error("QuoLab query failed:  {} ({})", message, status)
+                    logger.error("QuoLab API returned unexpected status response from query.  "
+                                 "status=%r message=%r query=%r", status, message, query)
+                    write_error("QuoLab query failed:  {} ({})", message, status)
                     return
 
-            # If a non-success exit code was returned, and the resulting object doesn't have message/status, then just raise an exception.
+            # When non-success status code without a message/status, then just raise an exception.
             try:
                 response.raise_for_status()
                 body = response.json()
             except Exception as e:
-                self.logger.debug("Body response for %s:   %s", e, response.text)
+                logger.debug("Body response for %s:   %s", e, response.text)
                 raise
 
-            self.logger.debug("Response body:   %s", body)
+            logger.debug("Response body:   %s", body)
 
             records = body["records"]
-            for record in body["records"]:
+            for record in records:
                 result = (splunk_dot_notation(record))
                 result["_raw"] = json.dumps(record)
                 # Q:  Are there ever fields that should be returned as _time instead of system clock time?
@@ -232,7 +240,7 @@ class QuoLabAPI(object):
                     break
 
             if monotonic() > expire:
-                self.logger.warning("Aborting query due to time expiration")
+                logger.warning("Aborting query due to time expiration")
                 break
 
             if i >= query_limit:
@@ -240,13 +248,13 @@ class QuoLabAPI(object):
 
             ellipsis = body.get("ellipsis", None)
             if ellipsis:
-                self.logger.debug("Query next batch.  i=%d, query_limit=%d, limit=%d, ellipsis=%s",
-                                  i, query_limit, query["limit"], ellipsis)
+                logger.debug("Query next batch.  i=%d, query_limit=%d, limit=%d, ellipsis=%s",
+                             i, query_limit, query["limit"], ellipsis)
                 query["resume"] = ellipsis
             else:
                 break
-        self.logger.info("Query/return efficiency: http_calls=%d, query_limit=%d, per_post_limit=%d duration=%0.3f",
-                         http_calls, query_limit, query["limit"], monotonic()-start)
+        logger.info("Query/return efficiency: http_calls=%d, query_limit=%d, per_post_limit=%d duration=%0.3f",
+                    http_calls, query_limit, query["limit"], monotonic()-start)
 
 
 class QuoLabWebSocket(object):

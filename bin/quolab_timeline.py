@@ -25,7 +25,7 @@ from cypresspoint.modinput import ScriptWithSimpleSecret
 from splunklib.client import Entity, HTTPError
 from splunklib.modularinput import Argument, Event, Scheme  # nopqa
 
-from quolab_ta import QuoLabAPI, __version__, monotonic
+from ta_quolab.api import QuoLabAPI, __version__, monotonic
 
 logger = getLogger("QuoLab.Input.Timeline")
 
@@ -84,9 +84,10 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
         try:
             data = Entity(self.service, "quolab/quolab_servers/{}/full".format(server))
         except HTTPError as e:
-            logger.info("No known server named '%s', check quolab_servers.conf", server)
+            logger.info(
+                "No known server named '%s', check quolab_servers.conf.  (Exception: %s)", server, e)
             return None
-        except Exception as e:
+        except Exception:
             logger.exception("Unhandled exception while fetching data from quolab_servers.conf")
             raise
         return data
