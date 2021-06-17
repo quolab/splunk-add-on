@@ -131,6 +131,8 @@ class QuoLabAPI(object):
             content_length = len(raw)
             logger.error("QuoLab API response could not be parsed.  url=%s content-length=%d  %s",
                          url, content_length, e)
+            logger.error("QuoLab API response could not be parsed.  url=%s Sample:\n%s\n...\n%s",
+                         url, raw[:200], raw[-200:])
             logger.debug("QuoLab API raw response: url=%s \n%s", url, raw)
             raise
         # debugging
