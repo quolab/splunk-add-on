@@ -1,6 +1,6 @@
 <form>
-    <label>Demo</label>
-    <description>Basic stats about Quolab server events and errors</description>
+    <label>Timeline status</label>
+    <description>Basic stats about Quolab Timeline input events and errors</description>
     <fieldset submitButton="false">
         <input type="time" token="time" searchWhenChanged="true">
             <label>Time</label>
