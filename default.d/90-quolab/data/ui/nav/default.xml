@@ -1,0 +1,6 @@
+<nav search_view="search">
+    <view name="intro" default="true"/>
+    <view name="configure"/>
+    <view name="demo"/>
+    <view name="search"/>
+</nav>
