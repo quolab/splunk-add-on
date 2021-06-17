@@ -4,6 +4,7 @@ Modular Input for QuoLab timeline activity stream indexing
 
 from __future__ import absolute_import, print_function, unicode_literals
 
+import functools
 import json
 import os
 import sys
@@ -36,8 +37,24 @@ setup_logging(
     debug=DEBUG)
 
 
+def log_exception(f):
+    @functools.wraps(f)
+    def wrap(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except Exception:
+            logger.exception("Unhandled exception in %s", f.__name__)
+            raise
+    return wrap
+
+
 def counter_to_kv(c):
     return " ".join("{}={}".format(k, v) for k, v in c.items())
+
+
+# Track if subscribing binding has been completed or not.
+subscribed = threading.Event()
+shutdown = threading.Event()
 
 
 class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
@@ -112,17 +129,19 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
     @staticmethod
     def backfill_reader(api, timeline, queue, facets, counter, retry=0):
         """ This will be launched in its own thread. """
-        # XXX: Better race condition avoidance method needed here!
-        # We don't know exactly when the websocket subscription goes active, so take a beat.
-        time.sleep(2)
+        logger.info("backfill thread activated.  Waiting for subscription event.")
+        wait_return = subscribed.wait(100)
+        logger.info("backfill thread subscription received. return=%r", wait_return)
 
+        # XXX: We likely don't need this anymore?
+        time.sleep(.5)
         logger.info("Reading from the queue to backfill missing events")
         try:
             for body in api.get_timeline_events(timeline, facets):
                 queue.put(("backfill", body["id"], body))
                 counter["backfill_queued"] += 1
         except Exception:
-            logger.exception("Failed to retreive all backfill events.")
+            logger.exception("Failed to retrieve all backfill events.")
 
             # XXX: Experimental attempt to workaround this an elusive issue
             if retry <= 3:
@@ -152,15 +171,27 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
 
     @staticmethod
     def websocket_reader(api, timeline, queue, facets, counter):
+        global shutdown
+
         def put_event_queue(record):
             body = record["body"]
             event_id = body["id"]
             queue.put(("websocket", event_id, body))
             counter["websocket_queued"] += 1
+
+        def out_of_band(type, *info):
+            if type == "bound":
+                logger.info("OOB Callback:  Triggering backfill")
+                subscribed.set()
+            elif type == "error":
+                logger.info("OOB Callback:  Error encountered:  %s", info)
+            elif type == "close":
+                logger.info("OOB Callback:  Close socket")
+
         logger.info("Starting websocket listening....")
-        ws = api.subscribe_timeline(put_event_queue, timeline, facets)
-        logger.info("Does this line get executed?")
-        del ws
+        ws = api.subscribe_timeline(put_event_queue, out_of_band, timeline, facets)
+        shutdown = ws.is_done
+        logger.info("Registed shutdown event")
 
     def stream_events(self, inputs, ew):
         # Workaround for Splunk SDK's poor modinput error capturing.  Logging enhancement
@@ -173,6 +204,11 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
     def _stream_events(self, inputs, ew):
         checkpoint_dir = inputs.metadata.get("checkpoint_dir")
         self.lifetime_counter = Counter()
+
+        # XXX: Make this check more 'official' and drop the loop below / dedent.
+        # One input is fundamental limitation of this design at this point.
+        if len(inputs.inputs) != 1:
+            raise AssertionError("Expecting exactly 1 input!")
 
         for input_name, input_item in six.iteritems(inputs.inputs):
             # Q:  is a counter thread safe?
@@ -263,7 +299,7 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
 
             # Fetch queued events and send them to Splunk
             try:
-                while True:
+                while not shutdown.is_set():
                     do_maint = False
                     try:
                         queue_source, event_id, record = queue.get(timeout=maint_interval)
@@ -315,9 +351,9 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                 logger.info("Exiting loop due to %s", e)
                 pass
 
-            # XXX: Update with new counter names
-            logger.info('Done processing:  input_name="%s" '
+            logger.info('Done processing:  input_name="%s" shutdown_reason=%s'
                         'Event counts:  backfill=%d streamed=%d events_ingested=%d  |  %s', input_name,
+                        "requested" if shutdown.isSet() else "exception",
                         counter["backfill_ingested"], counter["websocket_ingested"],
                         counter["events_ingested"], counter_to_kv(counter))
             self.lifetime_counter += counter

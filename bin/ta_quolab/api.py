@@ -142,11 +142,11 @@ class QuoLabAPI(object):
         for record in data.get("records", []):
             yield record
 
-    def subscribe_timeline(self, recv_message_callback, timeline_id, facets=None):
+    def subscribe_timeline(self, recv_message_callback, oob_callback, timeline_id, facets=None):
         # if facets is None:
         #   facets = {}
         qws = QuoLabWebSocket(self.url, self.get_auth(), timeline_id,
-                              recv_message_callback, self.verify)
+                              recv_message_callback, oob_callback, self.verify)
 
         # Run server_forever() in it's own thread, so we can return to the caller
         # thread.start_new_thread(qws.connect, ())
@@ -156,7 +156,7 @@ class QuoLabAPI(object):
         t.start()
 
         if not qws.is_setup.wait(15):
-            logger.error("Too too long to setup websocket to {}", self.url)
+            logger.error("Took too long to setup websocket to {}.", self.url)
             # XXX: Trigger a clean shutdown
             raise SystemExit(3)
 
@@ -261,11 +261,12 @@ class QuoLabAPI(object):
 
 class QuoLabWebSocket(object):
 
-    def __init__(self, url, auth, timeline, message_callback, verify):
+    def __init__(self, url, auth, timeline, message_callback, oob_callback, verify):
         self.url = url
         self.auth = auth
         self.timeline = timeline
         self.message_callback = message_callback
+        self.oob_callback = oob_callback
         self.verify = verify
         self.is_done = Event()
         self.is_setup = Event()
@@ -310,6 +311,10 @@ class QuoLabWebSocket(object):
 
         if event_name == "bound":
             logger.info("Websocket bound to %s", j["cid"])
+            try:
+                self.oob_callback("bound", j)
+            except Exception:
+                logger.exception("Failure during callback!  callback=%r", self.oob_callback)
         else:
             logger.info("Unknown '%s', message not ingested:  %s", event_name, msg_formatted)
 
@@ -329,6 +334,12 @@ class QuoLabWebSocket(object):
     def on_error(self, ws, err):
         logger.error("[Websocket Error] %s", err)
         # Q:  Does this always/automatically trigger a shutdown?  Should it?
+        try:
+            self.oob_callback("error", err)
+        except:
+            logger.exception("Callback error during on_error handling")
+        finally:
+            self.is_done.set()
 
     def _build_bind_request(self, facets=None):
         if facets is None:
@@ -371,4 +382,9 @@ class QuoLabWebSocket(object):
     def on_close(self, ws):
         ws.close()
         logger.info('[Websocket Closed]')
-        self.is_done.set()
+        try:
+            self.oob_callback("close")
+        except:
+            logger.exception("Callback error during on_error handling")
+        finally:
+            self.is_done.set()
