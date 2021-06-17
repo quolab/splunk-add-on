@@ -127,6 +127,7 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                              "Please pick from {}".format(" ".join(valid_log_level_values)))
 
     @staticmethod
+    @log_exception
     def backfill_reader(api, timeline, queue, facets, counter, retry=0):
         """ This will be launched in its own thread. """
         logger.info("backfill thread activated.  Waiting for subscription event.")
@@ -170,15 +171,18 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                     "  timeout waiting for queue to quiesce; stats could be wrong" if timeout < 0 else "")
 
     @staticmethod
+    @log_exception
     def websocket_reader(api, timeline, queue, facets, counter):
         global shutdown
 
+        @log_exception
         def put_event_queue(record):
             body = record["body"]
             event_id = body["id"]
             queue.put(("websocket", event_id, body))
             counter["websocket_queued"] += 1
 
+        @log_exception
         def out_of_band(type, *info):
             if type == "bound":
                 logger.info("OOB Callback:  Triggering backfill")

@@ -156,10 +156,18 @@ class QuoLabAPI(object):
         t.start()
 
         if not qws.is_setup.wait(15):
-            logger.error("Took too long to setup websocket to {}.", self.url)
+            logger.error("Took too long to setup websocket to {}.  Triggering a shutdown", self.url)
+            qws.is_done.set()
+            time.sleep(120)
+            # Forceable shutdown that will kill all threads
+            logger.error("Forcing a hard shutdown!")
+            # Give log time to write
+            time.sleep(3)
+
+            import os
+            os._exit(3)
             # XXX: Trigger a clean shutdown
             raise SystemExit(3)
-
         return qws
 
     def query_catalog(self, query, query_limit, timeout=30, fetch_count=1000, write_error=None):
@@ -296,7 +304,7 @@ class QuoLabWebSocket(object):
 
             kw["sslopt"] = {"cert_reqs": ssl.CERT_NONE}
         # Set ping_interval to cause enable_multithread=True in WebSocket() constructor
-        ws.run_forever(ping_interval=90, ping_timeout=10, **kw)
+        ws.run_forever(ping_interval=30, ping_timeout=10, **kw)
 
     def on_message(self, ws, msg):
         j = json.loads(msg)

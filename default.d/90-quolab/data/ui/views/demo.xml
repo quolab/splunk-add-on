@@ -35,7 +35,7 @@
             <title>Total Events Ingested</title>
             <single>
                 <search>
-                    <query>index=_internal sourcetype=quolab:modinput:timeline | stats count(events_ingested)</query>
+                    <query>index=_internal sourcetype=quolab:modinput:timeline Processing stats: | stats range(events_ingested) as events_ingested by input_name host process_id | stats sum(events_ingested) as events_ingested</query>
                     <earliest>$time.earliest$</earliest>
                     <latest>$time.latest$</latest>
                 </search>
@@ -62,7 +62,7 @@
             <title>Events Ingested per hour</title>
             <single>
                 <search>
-                    <query>index=_internal sourcetype=quolab:modinput:timeline | timechart span=1h count(events_ingested)</query>
+                    <query>index=_internal sourcetype=quolab:modinput:timeline | bin _time span=15m | stats range(events_ingested) as events_ingested by _time, input_name host process_id | timechart minspan=15m sum(events_ingested) as events_ingested</query>
                     <earliest>$time.earliest$</earliest>
                     <latest>$time.latest$</latest>
                 </search>
@@ -92,9 +92,9 @@
             <chart>
                 <search>
                     <query>index=_internal sourcetype=quolab:modinput:timeline Processing stats:
-| bin _time span=15m
+| bin _time span=5m
 | stats range(events_ingested) as events_ingested by input_name, host, process_id, _time
-| timechart sum(events_ingested) minspan=15m by input_name</query>
+| timechart sum(events_ingested) minspan=5m by input_name</query>
                     <earliest>$time.earliest$</earliest>
                     <latest>$time.latest$</latest>
                 </search>
