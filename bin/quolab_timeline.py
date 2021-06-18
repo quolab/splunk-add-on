@@ -155,7 +155,8 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                 return
 
         # We can't easily determine how many events were written vs skipped, without waiting for the queue to drain
-        timeout = 600
+        timeout_limit = 600
+        timeout = timeout_limit
         while timeout > 0:
             time.sleep(1)
             timeout -= 1
@@ -164,11 +165,12 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                 time.sleep(1)
                 break
 
-        logger.info("Loaded %d of %d events from queue buffer.  %d skipped%s",
+        logger.info("Loaded %d of %d events from queue buffer.  %d skipped  quiesce_time_s=%d attempt=%d",
                     counter["backfill_ingested"],
                     counter["backfill_queued"],
                     counter["backfill_skipped"],
-                    "  timeout waiting for queue to quiesce; stats could be wrong" if timeout < 0 else "")
+                    timeout_limit - timeout,
+                    retry)
 
     @staticmethod
     @log_exception
