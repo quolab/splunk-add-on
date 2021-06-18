@@ -96,13 +96,14 @@ class QuoLabAPI(object):
                         auth=HTTPBasicAuth(self.username, self.password),
                         verify=self.verify)
     '''
+    timeline_default_facets = ("display",)
 
     def get_timeline_events(self, timeline_id, facets=None):
         """ Call /v1/timeline/<timeline_id>/event to return events within the timeline's buffer. """
         # https://node77.cloud.quolab.com/v1/timeline/51942b79b8b34827bf721077fa22a590/event?facets.display=1
         url = "{}/v1/timeline/{}/event".format(self.url, timeline_id)
         if facets is None:
-            facets = ["display"]
+            facets = self.timeline_default_facets
 
         headers = {
             'content-type': "application/json",
@@ -143,10 +144,10 @@ class QuoLabAPI(object):
             yield record
 
     def subscribe_timeline(self, recv_message_callback, oob_callback, timeline_id, facets=None):
-        # if facets is None:
-        #   facets = {}
+        if facets is None:
+            facets = self.timeline_default_facets
         qws = QuoLabWebSocket(self.url, self.get_auth(), timeline_id,
-                              recv_message_callback, oob_callback, self.verify)
+                              recv_message_callback, oob_callback, self.verify, facets=facets)
 
         # Run server_forever() in it's own thread, so we can return to the caller
         # thread.start_new_thread(qws.connect, ())
@@ -269,13 +270,14 @@ class QuoLabAPI(object):
 
 class QuoLabWebSocket(object):
 
-    def __init__(self, url, auth, timeline, message_callback, oob_callback, verify):
+    def __init__(self, url, auth, timeline, message_callback, oob_callback, verify, facets=()):
         self.url = url
         self.auth = auth
         self.timeline = timeline
         self.message_callback = message_callback
         self.oob_callback = oob_callback
         self.verify = verify
+        self.facets = facets
         self.is_done = Event()
         self.is_setup = Event()
 
@@ -349,9 +351,7 @@ class QuoLabWebSocket(object):
         finally:
             self.is_done.set()
 
-    def _build_bind_request(self, facets=None):
-        if facets is None:
-            facets = ["display"]
+    def _build_bind_request(self):
         doc = {
             "attach": {
                 "ns": "activity-stream",
@@ -361,7 +361,7 @@ class QuoLabWebSocket(object):
             "body": {
                 "composition": {
                     "catalog": {
-                        "facets": {},
+                        "facets": {facet: True for facet in self.facets},
                         "object": "object"
                     }
                 }
@@ -370,8 +370,6 @@ class QuoLabWebSocket(object):
             "name": "bind",
             "ns": "link/binding"
         }
-        for facet in facets:
-            doc["body"]["composition"]["catalog"]["facets"][facet] = True
         return doc
 
     def on_open(self, ws):
