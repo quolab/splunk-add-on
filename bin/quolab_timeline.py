@@ -12,7 +12,7 @@ import threading
 import time
 from collections import Counter
 from datetime import timedelta
-from logging import getLogger
+from logging import getLogger, Formatter
 from queue import Empty, Queue
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))  # noqa
@@ -34,6 +34,10 @@ DEBUG = True
 
 setup_logging(
     os.path.join(os.environ['SPLUNK_HOME'], "var", "log", "splunk", "quolab_timeline.log"),
+    formatter=Formatter(
+        '%(asctime)s [%(process)d:%(threadName)s] %(levelname)s %(name)s:  %(message)s'),
+    max_size_mb=25,
+    backup_count=10,
     debug=DEBUG)
 
 
