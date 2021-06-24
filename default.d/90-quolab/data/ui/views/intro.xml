@@ -18,7 +18,7 @@
             background-color: #dddddd;
           }
         </style>
-        <h1>QuoLab Add-on for Splunk v0.12.2</h1>
+        <h1>QuoLab Add-on for Splunk v0.13.0</h1>
         <h2>Welcome to QuoLab</h2>
         <p>
           The QuoLab add-on for Splunk adds a generating command <i>quolabquery</i> that makes search requests to QuoLab servers.
