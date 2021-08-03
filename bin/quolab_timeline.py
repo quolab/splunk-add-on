@@ -133,6 +133,12 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                      required_on_create=True
                      ))
         scheme.add_argument(
+            Argument("facets",
+                     title="Facets",
+                     description="List one or more facets to apply to events returned from the timeline.  Multiple facets should be separated by a comma.",
+                     data_type=Argument.data_type_string,
+                     ))
+        scheme.add_argument(
             Argument("backfill",
                      title="Enable Backfill",
                      description="If enabled, the first run will retrieve all existing events from the queue",
@@ -186,6 +192,7 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
 
             server = input_item['server']
             timeline = input_item['timeline']
+            facets = input_item['facets']
             backfill = as_bool(input_item['backfill'])
             log_level = input_item['log_level']
             # COOKIECUTTER-TODO:  Handle secret, like so, when using a script with a simple secret
