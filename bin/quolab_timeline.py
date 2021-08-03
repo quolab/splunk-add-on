@@ -130,9 +130,17 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
             raise ValueError("Unexpected value for 'log_level'. "
                              "Please pick from {}".format(" ".join(valid_log_level_values)))
 
+    @classmethod
+    @log_exception
+    def backfill_reader(cls, api, timeline, queue, facets, counter, thread_next):
+        try:
+            return cls._backfill_reader(api, timeline, queue, facets, counter)
+        finally:
+            thread_next.set()
+
     @staticmethod
     @log_exception
-    def backfill_reader(api, timeline, queue, facets, counter, retry=0):
+    def _backfill_reader(api, timeline, queue, facets, counter, retry=0):
         """ This will be launched in its own thread. """
         logger.info("backfill thread activated.  Waiting for subscription event.")
         wait_return = subscribed.wait(100)
@@ -153,9 +161,8 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                 retry += 1
                 logger.info("Will attempt to re-run the backfill (retry=%d)", retry)
                 time.sleep(5)
-                threading.Thread(target=QuoLabTimelineModularInput.backfill_reader,
-                                 args=(api, timeline, queue, facets, counter),
-                                 kwargs={"retry": retry}).start()
+                QuoLabTimelineModularInput._backfill_reader(api, timeline, queue,
+                                                            facets, counter, retry=retry)
             else:
                 logger.error("Too many retry attempts for backfill (retry=%d)  Giving up.", retry)
                 return
@@ -180,7 +187,7 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
 
     @staticmethod
     @log_exception
-    def websocket_reader(api, timeline, queue, facets, counter):
+    def websocket_reader(api, timeline, queue, facets, counter, thread_next):
         global shutdown
 
         @log_exception
@@ -203,6 +210,7 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
         logger.info("Starting websocket listening....")
         ws = api.subscribe_timeline(put_event_queue, out_of_band, timeline, facets)
         shutdown = ws.is_done
+        thread_next.set()
         logger.info("Registed shutdown event")
 
     def stream_events(self, inputs, ew):
@@ -285,23 +293,22 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                     logger.info("First run.  Skipping backfill.")
                     load_from_buffer = False
 
+            thread_workers = [
+                self.websocket_reader,
+            ]
+
             if load_from_buffer:
-                backfill_thread = threading.Thread(target=self.backfill_reader,
-                                                   args=(api, timeline, queue, facets, counter))
-                backfill_thread.start()
+                # Do a sandwitch data load to workaround possible library bug, while loading as many events as possible
+                thread_workers.insert(0, self.backfill_reader)
+                thread_workers.append(self.backfill_reader)
 
-            # XXX: Technically, there's a race-condition here.
-            # Q:  Should the websocket stream should be established before the backfill?
-            # A:  Per Fred/Tiago:  YES
-            # Doh, there is still a race condition.  Because we don't known exactly when the websocket is subscribed
+            next_thread = threading.Event()
+            next_thread.set()
 
-            # XXX: Not sure why calling this function directly doesn't seem to work; but the thread approach works
-            # self.websocket_reader(api, timeline, queue, facets, counter)
-            websocket_thread = threading.Thread(target=self.websocket_reader,
-                                                args=(api, timeline, queue, facets, counter))
-            websocket_thread.start()
+            init_main_interval = 5
+            final_main_interval = 30
+            maint_interval = init_main_interval     # Will be reset when thread_workers is consumed
 
-            maint_interval = 30
             dump_max_interval = timedelta(seconds=45)
             next_maint = monotonic() + maint_interval
 
@@ -312,6 +319,20 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
             # Fetch queued events and send them to Splunk
             try:
                 while not shutdown.is_set():
+
+                    # Launch subsequent threads (as earlier threads indicate that the next thread may begin)
+                    if next_thread.is_set():
+                        next_thread.clear()
+                        if thread_workers:
+                            thread_function = thread_workers.pop(0)
+                            logger.info("Launching next thread:  target=%s",
+                                        thread_function.__name__)
+                            thread = threading.Thread(target=thread_function,
+                                                      args=(api, timeline, queue, facets, counter, next_thread))
+                            thread.start()
+                        else:
+                            maint_interval = final_main_interval
+
                     do_maint = False
                     try:
                         queue_source, event_id, record = queue.get(timeout=maint_interval)
