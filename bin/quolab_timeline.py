@@ -156,6 +156,8 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                 threading.Thread(target=QuoLabTimelineModularInput.backfill_reader,
                                  args=(api, timeline, queue, facets, counter),
                                  kwargs={"retry": retry}).start()
+            else:
+                logger.error("Too many retry attempts for backfill (retry=%d)  Giving up.", retry)
                 return
 
         # We can't easily determine how many events were written vs skipped, without waiting for the queue to drain
