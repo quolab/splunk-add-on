@@ -75,6 +75,20 @@ index=_internal sourcetype=splunkd SetupAdminHandler quolab/quolab_servers_secre
 ```
 
 
+
+#### Troubleshooting Modular input
+
+Looking deeper:
+
+```
+splunk cmd splunkd print-modinput-config --debug quolab_timeline quolab_timeline://YourStanzaNameHere
+```
+
+See Splunk's docs for more [help](https://docs.splunk.com/Documentation/Splunk/latest/AdvancedDev/ModInputsDevTools).
+
+
+
+
 ## Tools
 
  * [Cookiecutter](https://github.com/audreyr/cookiecutter) is use to kickstart the development of new addons.

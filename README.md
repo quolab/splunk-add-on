@@ -29,10 +29,12 @@ Additional details can be found [here](./.splunkbase/details.md).
 | Sourcetype | Purpose |
 | ---------- | ------- |
 | command:quolabquery | Internal logs and stats related to custom QuoLab SPL command. |
-
+| quolab:timeline | Events collected from the QuoLab API |
+| quolab:modinput:timeline | Internal logs and stats related to QuoLab data ingestion. |
 
 ## Troubleshooting
 
+### quolabquery Command
 Find internal/script errors:
 
 Enable debug logging by adding `logging_level=DEBUG` to your existing query, like so:
@@ -53,6 +55,25 @@ Review SPL search command logs group by request:
 index=_internal sourcetype=command:quolabquery | transaction host Pid
 ```
 
+### quolab_timeline Input
+Internal/script errors:
+```
+index=_internal (source=*quolab_timeline*.log) OR (sourcetype=splunkd ExecProcessor "message from" quolab_timeline.py) OR (component=ModularInputs quolab_timeline)
+```
+
+Review all modular input logs:
+```
+index=_internal sourcetype=quolab:modinput:timeline | transaction host process_id
+```
+
+Search to show indexing lag:  (Delay is shown in hours).  You should be able to compare the backfilled events vs live events with this chart:
+```
+sourcetype="quolab:timeline" | eval index_delay = (_indextime-_time)/3600 | timechart avg(index_delay)
+```
+
+
+
+
 ## License
 
 TA-quolab is available under the [Apache 2](https://www.apache.org/licenses/LICENSE-2.0) license.
@@ -68,5 +89,6 @@ See the API documentation from the web interface of your local QuoLab server. Cl
 This SPL command uses the following API calls:
 
 -   `v1/catalog/query` - the "swiss-army-knife" of quolab data querying. Objects can be queried from QuoLab's graph data model, and aggregated, and/or enriched using facets as necessary.
+-   `v1/timeline` - the quolab activity stream for events occurring within the QuoLab backend.  This endpoint supports both a bulk query (GET) as well as a websocket interface for streaming when new events occur.
 
 This addon was built from the [Kintyre Splunk App builder](https://github.com/Kintyre/cypress-cookiecutter) (version 1.5.0) [cookiecutter](https://github.com/audreyr/cookiecutter) project.

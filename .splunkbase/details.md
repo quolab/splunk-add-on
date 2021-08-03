@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The QuoLab Add-On for Splunk adds the `quolabquery` generating command to a Splunk environment, allowing an authorized user to make requests to one or more QuoLab servers to bring in data to Splunk for additional forensic and analytic investigation.
+The QuoLab Add-On for Splunk adds custom search command and data ingestion capabilities your Splunk environment.   The `quolabquery` generating command allows authorized users to make requests to one or more QuoLab servers to bring in data to Splunk for additional forensic and analytic investigation.  The `quolab_timeline` modular input can be used to stream activity data into Splunk in real time.
 
 ## Prerequisites
 
@@ -11,7 +11,10 @@ The QuoLab Add-On for Splunk adds the `quolabquery` generating command to a Splu
 
 ## Architecture
 
-This add-on comprises an authentication lookup and a python script that implements `quolabquery`, a generating command. `quolabquery` wraps and simplifies requests to the QuoLab REST API. Requests will be sent through web hooks to the same url as the user interface.
+This add-on comprises an authentication lookup and a python script that implements `quolabquery`, a generating command and the `quolab_timeline` modular input.
+
+ * `quolabquery` wraps and simplifies requests to the QuoLab REST API. Requests will be sent through web hooks to the same url as the user interface.
+ * `quolab_timeline` uses a websocket to subscribe to Timeline activity events so they are immediately available as a Splunk indexed event.
 
 ## Installation
 
@@ -31,10 +34,14 @@ Steps:
   1. **Grant authorization** to users who should be allow to run quolabquery.
      Either add users directly to the `quolab_servers_user` role, or inherit that roles from role(s) that already exist within your organization.
      Members of the `admin` role will be able to run this automatically.
+  1. **Setup a new input** for each timeline you wish to monitor.
+     You will need to capture the timeline ID and choose to enable backfill, and optionally setup 'facets' to include.
+     Use the *Timeline Status* dashboard to review ingestion activity.
+
 
 ## Use cases
 
-QuoLab users looking to further enrich their investigations can now bring QuoLab artifacts into Splunk to leverage Splunk's ecosystem and analytics.  See _Combining QuoLab with Splunk_ below for expanded examples.
+QuoLab users looking to further enrich their investigations can now bring QuoLab artifacts into Splunk to leverage Splunk's ecosystem and analytics.  This section focuses on interactive queries using custom search commands.  See _Combining QuoLab with Splunk_ below for expanded examples.
 
 ### Find a specific domain
 
@@ -132,9 +139,12 @@ HINT: If you're trying to learn the query language, you can use the `quolabquery
 
 ### Sourcetypes
 
-| Sourcetype | Purpose |
-| ---------- | ------- |
-| command:quolabquery | Internal logs and stats related to custom QuoLab SPL command. |
+| Sourcetype | Type | Purpose |
+| ---------- | ---- | ------- |
+| quolab:timeline | modular input | Events collected from the QuoLab API |
+| command:quolabquery | monitor |  Internal logs and stats related to custom QuoLab SPL command. |
+| quolab:modinput:timeline | monitor | Internal logs and stats related to QuoLab data ingestion. |
+
 
 
 ### Authorization
@@ -215,6 +225,38 @@ index=summary source=quolab-cases
 ```
 
 If this is a use case you find yourself using frequently, please reach out.  There are several inherent limitations of this approach and gotchas with summary indexing, especially around timing.  Let us know if natively supporting this would be a valuable feature.
+
+
+## Troubleshooting
+
+### Timeline modular input
+
+Internal/script errors:
+```
+index=_internal (source=*quolab_timeline*.log) OR (sourcetype=splunkd ExecProcessor "message from" quolab_timeline.py) OR (component=ModularInputs quolab_timeline)
+```
+
+Review all modular input logs:
+```
+index=_internal sourcetype=quolab:modinput:timeline | transaction host process_id
+```
+
+Search to show indexing lag:  (Delay is shown in hours).  You should be able to compare the backfilled events vs live events with this chart:
+```
+sourcetype="quolab:timeline" | eval index_delay = (_indextime-_time)/3600 | timechart avg(index_delay)
+```
+
+
+## Known issues & Limitations
+
+For the most recent list of issues, please check for open issues on the [GitHub issues](https://github.com/quolab/splunk-add-on/issues) page.
+
+### Quolab Timeline (Modular Input)
+
+ * Backfill json errors may occur for busy timelines.  This is possibly caused by the use of `requests` and `websocket` client at the same time.  The websocket client may be replaced with a different library after Python 2.7 support is dropped (which is still required for Splunk 7.3).
+ * The long-running modular input has logging concurrency issues when multiple timelines are configured at once.  This issues is inherent to Python's built in logging handlers and is a bigger issue on Windows due to file locking behavior.  This issues is not unique to this add on, but has been listed here for full transparency.
+
+
 
 ## Source & Licensing
 
