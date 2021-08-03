@@ -12,7 +12,7 @@ import threading
 import time
 from collections import Counter
 from datetime import timedelta
-from logging import getLogger, Formatter
+from logging import getLogger, getLevelName, Formatter
 from queue import Empty, Queue
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "lib"))  # noqa
@@ -30,7 +30,7 @@ from ta_quolab.api import QuoLabAPI, __version__, monotonic
 
 logger = getLogger("QuoLab.Input.Timeline")
 
-DEBUG = True
+DEBUG = False
 
 setup_logging(
     os.path.join(os.environ['SPLUNK_HOME'], "var", "log", "splunk", "quolab_timeline.log"),
@@ -253,15 +253,13 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
 
             server = input_item['server']
             timeline = input_item['timeline']
-            facets = input_item['facets']
+            facets = input_item['facets'].replace(" ", "").split(",")
             backfill = as_bool(input_item['backfill'])
             history_size = 10000
-
-            # XXX: Add these as param :=)
-            facets = ["display"]
-            # stats_interval = 300
-
             log_level = input_item['log_level']
+
+            # Set logging level
+            getLogger().setLevel(getLevelName(log_level))
 
             # Load reference content from quolab_servers.conf
             server = self.fetch_quolab_servers(server)
@@ -349,10 +347,11 @@ class QuoLabTimelineModularInput(ScriptWithSimpleSecret):
                             continue
 
                         # XXX:  'TA_CODEPATH' for debugging where events come from.
-                        record["TA_CODEPATH"] = queue_source
-                        record["TA_PID"] = PID
-                        EVENT_ID += 1
-                        record["TA_EVENT_ID"] = EVENT_ID
+                        if log_level == "DEBUG":
+                            record["TA_CODEPATH"] = queue_source
+                            record["TA_PID"] = PID
+                            EVENT_ID += 1
+                            record["TA_EVENT_ID"] = EVENT_ID
 
                         msg = json.dumps(record, separators=(',', ':'))
                         e = Event(sourcetype="quolab:timeline", unbroken=True, data=msg)
