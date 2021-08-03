@@ -152,7 +152,14 @@
                         "type": "string",
                         "required": true,
                         "description": "Timeline id from QuoLab",
-                        "help": "TODO:  Describe how users can find this ID from the QuoLab user interface.   For now, navigate to /v1/timeline from your browser."
+                        "help": "Timeline ID can be found in the Artifact Details or via /v1/timeline"
+                    },
+                    "facets": {
+                        "label": "Facets",
+                        "type": "string",
+                        "default": "display",
+                        "required": false,
+                        "description": "List one or more facets to apply to events returned from the timeline.  Multiple facets should be separated by a comma."
                     },
                     "backfill": {
                         "label": "Enable Backfill",

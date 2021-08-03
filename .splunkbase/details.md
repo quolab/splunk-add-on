@@ -84,6 +84,33 @@ Each server contains the following attributes:
 | `max_execution_time` | Integer | The longest duration in seconds that any individual query may last. |
 
 
+### Modular input: QuoLab Timeline
+
+The `quolab_timeline` input captures activity from a timeline and sends those events to a Splunk index for later retrieval and analysis.  Before setting up this input, at least one *QuoLab Server* must be defined, as noted in the prior section.
+
+Steps:
+
+  1. In the Splunk UI, navigate the main menu.  Pick *Settings* -> *Data input*.
+  1. Under the *Local input* section, locate *QuoLab Timeline* and click *+ Add new*.
+  1. Select a name for the input, specify the quolab server name, and provide the ID of the timeline to monitor.  (See the notes below on how to determining the ID of an existing timeline from the QuoLab web interface.)
+  1. Choose to enable backfill, unless only new events are desireable.
+  1. Pick one or more *facets* that should be used to augment events loaded from the QuoLab database.
+  1. Use the *Timeline Status* dashboard to review ingestion activity.
+
+#### Finding the Timeline's ID
+
+The "Timeline" parameter of the *QuoLab Timeline* input requires the ID of the timeline, and not a human friendly label.
+A timeline's internal identifier can be located via the user interface:
+
+  1.  Navigate to the desired timeline in the User Interface.
+  1.  From the context menu, select *Copy* -> *Fact to Clipboard*.
+  1.  Open a new tab and select *Artifact Details* from the the *Tool picker* window.
+  1.  From the clipboard tray, drag the timeline object to the *Artifact Details* tool.
+  1.  Under the *Details* tab, a object tree will display the underling information.
+  1.  Copy the "Id" value for use in the *Timeline* input parameter.
+
+Alternately, technical users can also get this identifier via the API directly.  Navigate to `/v1/timeline` from your browser and get a JSON listing of timelines that your user account has access to.  Look for the hex value associated with the `id` attribute, and use that as the *Timeline* parameter.
+
 ### Search command: quolabquery
 
 The `quolabquery` command supports simple and advanced queries against a QuoLab catalog.
