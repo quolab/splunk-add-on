@@ -62,7 +62,7 @@
       <title>Events Ingested per hour</title>
       <single>
         <search>
-          <query>index=_internal sourcetype=quolab:modinput:timeline | bin _time span=15m | stats range(events_ingested) as events_ingested by _time, input_name host process_id | timechart minspan=15m sum(events_ingested) as events_ingested</query>
+          <query>index=_internal sourcetype=quolab:modinput:timeline Processing stats: | bin _time span=15m | stats range(events_ingested) as events_ingested by _time, input_name host process_id | timechart minspan=15m partial=f per_hour(events_ingested) as events_ingested</query>
           <earliest>$time.earliest$</earliest>
           <latest>$time.latest$</latest>
         </search>
@@ -73,6 +73,7 @@
         <option name="numberPrecision">0</option>
         <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
         <option name="rangeValues">[0,30,70,100]</option>
+        <option name="refresh.display">progressbar</option>
         <option name="showSparkline">1</option>
         <option name="showTrendIndicator">1</option>
         <option name="trellis.enabled">0</option>
@@ -81,7 +82,7 @@
         <option name="trendColorInterpretation">standard</option>
         <option name="trendDisplayMode">absolute</option>
         <option name="unitPosition">after</option>
-        <option name="useColors">1</option>
+        <option name="useColors">0</option>
         <option name="useThousandSeparators">1</option>
       </single>
     </panel>
@@ -138,7 +139,11 @@
       <title>Errors</title>
       <table>
         <search>
-          <query>index=_internal sourcetype=quolab:modinput:timeline log_level=ERROR | stats values(message) as message by _time process_id</query>
+          <query>index=_internal sourcetype=quolab:modinput:timeline log_level=ERROR
+| eval message=replace(message, "(?s)^([^\r\n]+).*$", "\1")
+| stats  max(_time) as _time, count as errors, dc(process_id) as processes by message
+| reltime
+| table reltime, message, errors processes</query>
           <earliest>$time.earliest$</earliest>
           <latest>$time.latest$</latest>
         </search>
