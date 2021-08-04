@@ -3,4 +3,4 @@
 
 # Assumption:  All sys.path fixes have already been applied by the importer
 
-__version__ = "0.15.0"
+__version__ = "0.15.1"
