@@ -30,15 +30,13 @@ from ta_quolab.api import QuoLabAPI, __version__, monotonic
 
 logger = getLogger("QuoLab.Input.Timeline")
 
-DEBUG = False
-
 setup_logging(
     os.path.join(os.environ['SPLUNK_HOME'], "var", "log", "splunk", "quolab_timeline.log"),
     formatter=Formatter(
         '%(asctime)s [%(process)d:%(threadName)s] %(levelname)s %(name)s:  %(message)s'),
     max_size_mb=25,
     backup_count=10,
-    debug=DEBUG)
+    debug=True)
 
 
 def log_exception(f):
